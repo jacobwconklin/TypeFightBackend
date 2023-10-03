@@ -10,6 +10,8 @@ const PromptSchema = new Schema({
   prompt: { type: String, required: true, maxLength: 10000 },
   length: { type: String, enum: ["Tweet", "Paragraph", "Short Story", "Novel"]},
   category: { type: String, enum: ["History", "Funny", "Sci-Fi"]}, // could adjust / add more
+  title: { type: String, required: true, maxLength: 32},
+  author: { type: String, maxLength: 32}
   // # of characters is an easily determined number to just be promt.length, so unnecessary to include
 });
 
