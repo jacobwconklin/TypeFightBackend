@@ -10,3 +10,8 @@ TO COPY AND RUN REPO NEED:
 .env file with fields: 
     DB_USER={Insert MongoDB Atlas Database Username}
     DB_PASS={Insert MongoDB Atlas Database Password}
+
+## Deployment
+
+Deploy by installing Azure App Service extension, then from the command pallete go to azure sign in,
+then use the command pallete to run azure deploy web app
