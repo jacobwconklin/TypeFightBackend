@@ -11,6 +11,8 @@ var logger = require('morgan');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
+var sessionRouter = require('./routes/session')
+var quickKeysRouter = require('./routes/quick_keys')
 var textRouter = require('./routes/text');
 
 app.use(cors())
@@ -46,6 +48,8 @@ async function main() {
 // routes requests to routes
 app.use('/', indexRouter);
 app.use('/users', usersRouter);
+app.use('/session', sessionRouter)
+app.use('/quick-keys', quickKeysRouter);
 app.use('/text', textRouter);
 
 // catch 404 and forward to error handler
