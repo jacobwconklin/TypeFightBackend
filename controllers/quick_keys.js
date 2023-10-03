@@ -52,7 +52,7 @@ exports.getPrompts = async (req, res) => {
 }
 
 // select a presented prompt for the game
-exports.selectPRompt = async (req, res) => {
+exports.selectPrompt = async (req, res) => {
     try{
         // make sure request has promptId
         if (req.body.promptId, req.body.sessionId) {
