@@ -4,7 +4,7 @@
 const mongoose = require("mongoose");
 const QuickKeys = require("../models/quick_keys/quick_keys_game");
 const Prompt = require("../models/quick_keys/prompt");
-const Session = require("../models/Session");
+const Session = require("../models/session");
 const Player = require("../models/Player");
 const Result = require("../models/quick_keys/result");
 
@@ -22,19 +22,49 @@ exports.quickKeysGameStatus = async (req, res) => {
         if (req.body.sessionId) {
             const currSession = await Session.findById(req.body.sessionId);
             const quickKeysGame = await QuickKeys.findOne({ session: currSession });
-            res.status(200).json(quickKeysGame);
+            // need chosen_prompt to decide if on select prompt screen or starting game
+            // get name of player, index, and time (if it exists) for reach result to create view 
+
+            const playerResults = await Promise.all(quickKeysGame.results.map( async (resultId) => {
+                const resultObject = await Result.findById(resultId);
+                // resultObject contains half of our information plus the player's ID
+                const playerObject = await Player.findById(resultObject.player);
+                return { player: playerObject, time: resultObject.time, index: resultObject.index }
+            }));
+            res.status(200).json({prompt: quickKeysGame.chosen_prompt, results: playerResults});
         } else {
-            res.send("Must provide sessionId to status a quick keys game");
+            res.status(400).send("Must provide sessionId to status a quick keys game");
         }
     } catch(error) {
         console.log("Error in quick keys game status", error);
+        res.status(500).send(error);
+    }
+}
+
+// add a new prompt 
+exports.addPrompt = async (req, res) => {
+    try {
+        if (req.body.category && req.body.length && req.body.prompt) {
+            const newPrompt = await new Prompt({
+                prompt: req.body.prompt,
+                category: req.body.category,
+                length: req.body.length
+            });
+            const savedNewPrompt = await newPrompt.save();
+            res.status(200).send(savedNewPrompt);
+        } else {
+            res.status(400).send("Must provide category, length, and prompt properties to add a Prompt");
+        }
+    } catch(error) {
+        console.log("Error in addPrompt", error);
+        res.status(500).send(error);
     }
 }
 
 // combining get all prompts and get filtered prompts into one function that applies filter(s) IF given
 exports.getPrompts = async (req, res) => {
-    try{
-        const matchingPrompts = [];
+    try {
+        let matchingPrompts = [];
         if (req.body.category && req.body.length) {
             matchingPrompts = await Prompt.find({category: req.body.category, length: req.body.length})
         } else if (req.body.category) {
@@ -45,9 +75,10 @@ exports.getPrompts = async (req, res) => {
             // get all prompts
             matchingPrompts = await Prompt.find();
         }
-        res.status(200).json(matchingPrompts);
+        res.status(400).status(200).json(matchingPrompts);
     } catch(error) {
         console.log("Error in getAllPrompts", error);
+        res.status(500).send(error);
     }
 }
 
@@ -55,52 +86,81 @@ exports.getPrompts = async (req, res) => {
 exports.selectPrompt = async (req, res) => {
     try{
         // make sure request has promptId
-        if (req.body.promptId, req.body.sessionId) {
+        if (req.body.promptId && req.body.sessionId) {
             // set prompt as the prompt for the Quick Keys Game instance
             const currSession = await Session.findById(req.body.sessionId);
             const chosen_prompt = await Prompt.findById(req.body.promptId);
             const updatedQuickKeysGame = await QuickKeys.findOneAndUpdate({ session: currSession }, { chosen_prompt: chosen_prompt })
             res.status(200).json(updatedQuickKeysGame);
         } else {
-            res.send("Must provide promptId and sessionId properties to select a Prompt");
+            res.status(400).send("Must provide promptId and sessionId properties to select a Prompt");
         }
     } catch(error) {
         console.log("Error in select Prompt", error);
+        res.status(500).send(error);
     }
 }
 
 // player has progressed their index
 exports.updatePlayerIndex  = async (req, res) => {
     try {
-        if (req.body.playerId, req.body.index) {
+        if (req.body.playerId && req.body.index) {
             const player = await Player.findById(req.body.playerId);
             // Time to find out if Mongo array holds copy or refrence to see if I can just update the Result object directly.
             // I believe it has got to be a refrence surely.
-            const updatedResult = await Result.findOneAndUpdate({player}, {index: req.body.index});
+            const oldResult = await Result.findOneAndUpdate({player: player}, {index: req.body.index});
             // may be more meaningful to return whole game but if status endpoint does that I don't need to make this
             // endpoint any slower.
-            res.status(200).json(updatedResult);
+            // returning oldResult will just show the old value so TODO determine if better to show new value or nothing or something else
+            res.status(200).json(oldResult);
         } else {
-            res.send("Must provide playerId and index properties to update player index");
+            res.status(400).send("Must provide playerId and index properties to update player index");
         }
     } catch(error) {
         console.log("Error in update Player Index", error);
+        res.status(500).send(error);
     }
 }
 
 // player has finished typing the prompt
 exports.updatePlayerTime = async(req, res) => {
     try {
-        if (req.body.playerId, req.body.time) {
+        if (req.body.playerId && req.body.time) {
             const player = await Player.findById(req.body.playerId);
-            const updatedResult = await Result.findOneAndUpdate({player}, {time: req.body.time});
-            res.status(200).json(updatedResult);
+            const oldResult = await Result.findOneAndUpdate({player}, {time: req.body.time});
+            // again oldResult probably won't be of any value to front-end may just disregard
+            res.status(200).json(oldResult);
         } else {
-            res.send("Must provide playerId and time properties to update player index");
+            res.status(400).send("Must provide playerId and time properties to update player index");
         }
     } catch(error) {
         console.log("Error in update Player Index", error);
+        res.status(500).send(error);
     }
 }
 
 // TODO game exited -> handle new game, with new prompt, same prompt, or destroy game (if back to game select).
+
+exports.wipe = async(req, res) => {
+    try {
+        if (req.body.sessionId) {
+            const currSession = await Session.findById(req.body.sessionId);
+            const quickKeysGame = await QuickKeys.findOne({ session: currSession });
+
+            // delete results first TODO don't think deleting QuickKeys would handle this
+            let numResultsDeleted = 0;
+            await Promise.all(quickKeysGame.results.forEach( async (res) => {
+                await Result.findByIdAndDelete(res);
+                numResultsDeleted++;
+            }))
+            // delete quick keys
+            const quickKeysDeleted = await QuickKeys.findOneAndDelete({session: currSession});
+            res.status(200).json({resultsDeleted: numResultsDeleted, quickKeysDeleted: quickKeysDeleted});
+        } else {
+            res.status(400).send("Must provide sessionId property to wipe a Quick Keys game");
+        }
+    } catch(error) {
+        console.log("Error in wiping Quick Keys", error);
+        res.status(500).send(error);
+    }
+}

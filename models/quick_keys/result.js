@@ -7,8 +7,7 @@ const Player = require("../Player");
 const Schema = mongoose.Schema;
 
 const ResultSchema = new Schema({
-    
-    player: { type: Player },
+    player: { type: mongoose.ObjectId, ref: Player},
     time: { type: Number}, // Time in milliseconds. When this has a value it indicates the player finished.
     index: { type: Number, default: 0} // updated rapidly as players progress maybe just update on each spacebar rather than every character if problematic,
     // not sure... 

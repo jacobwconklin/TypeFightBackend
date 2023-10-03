@@ -7,19 +7,18 @@
 // delete all old games that get abandoned? Idk
 const mongoose = require("mongoose");
 const Prompt = require("./prompt");
-const Result = require("./result");
-const Session = require("../Session");
+const Result = require("./result").schema;
+const Session = require("../session");
 
 const Schema = mongoose.Schema;
 
 // from thsi model player's screen needs to be able to paint entire UI View
 
 const QuickKeysGameSchema = new Schema({
-    
-    chosen_prompt: { type: Prompt },
-    results: { type: [Result] },
+    chosen_prompt: { type: mongoose.ObjectId, ref: Prompt },
+    results: [{type: Schema.Types.ObjectId, ref: Result}],
     // the session it belongs to so that player http requests are easily applied to the right game
-    session: { type: Session, required: true }
+    session: { type: mongoose.ObjectId, ref: Session }
   });
   
   // Export model

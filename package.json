@@ -3,7 +3,7 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "node ./bin/www"
+    "start": "node ./bin/www \nBackend running locally hit it here: http://localhost:3000/"
   },
   "dependencies": {
     "cookie-parser": "~1.4.4",
@@ -15,6 +15,7 @@
     "jade": "~1.11.0",
     "mongoose": "^7.5.3",
     "morgan": "~1.9.1",
-    "referral-codes": "^3.0.0"
+    "node-fetch": "^2.6.1",
+    "referral-code-generator": "^1.0.8"
   }
 }

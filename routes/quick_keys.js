@@ -16,10 +16,16 @@ router.post('/prompts', quick_keys_controller.getPrompts);
 /* select a prompt */
 router.post('/prompt', quick_keys_controller.selectPrompt);
 
+/* add a prompt */
+router.post('/add', quick_keys_controller.addPrompt);
+
 /* update index */
 router.post('/index', quick_keys_controller.updatePlayerIndex);
 
 /* update time */
 router.post('/time', quick_keys_controller.updatePlayerTime);
+
+/* wipe the game */
+router.post('/wipe', quick_keys_controller.wipe);
 
 module.exports = router;

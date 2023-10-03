@@ -1,7 +1,7 @@
 // Holds info needed for one Player. Includes All of their customization options
 
 const mongoose = require("mongoose");
-const Session = require("./Session");
+const Session = require("./session");
 const Schema = mongoose.Schema;
 
 const PlayerSchema = new Schema({
@@ -10,7 +10,7 @@ const PlayerSchema = new Schema({
     icon: {type: String, enum: ["lizard", "wizard", "ninja", "samurai"] }, 
     font: { type: String, enum: ["Times New Roman", "Calibri"] },
     color: { type: String, }, // store hex value ie #FFFFFF just use a color picker on front-end that will give me this 
-    session: { type: Session } // optional in case players play solo, but may still create one if easier for consistency
+    session: { type: mongoose.ObjectId, ref: Session} // optional in case players play solo, but may still create one if easier for consistency
   });
   
   // Export model

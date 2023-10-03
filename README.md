@@ -11,6 +11,10 @@ TO COPY AND RUN REPO NEED:
     DB_USER={Insert MongoDB Atlas Database Username}
     DB_PASS={Insert MongoDB Atlas Database Password}
 
+To use require('referral-codes') need to run
+    npm i node-fetch@2.6.1
+    as new versions of node-fetch only support ESM
+
 ## Deployment
 
 Deploy by installing Azure App Service extension, then from the command pallete go to azure sign in,

@@ -8,4 +8,7 @@ router.post('/status', session_controller.sessionStatus );
 /* Select a game for a given session */
 router.post('/select-game', session_controller.selectGame );
 
+/* Wipe the session TODO for now delete all players later them persist if they make user and pass */
+router.post('/wipe', session_controller.wipe );
+
 module.exports = router;

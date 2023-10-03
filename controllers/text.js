@@ -19,6 +19,7 @@ exports.getAllTexts = async (req, res) => {
         res.status(200).json(allTexts);
     } catch(error) {
         console.log("Error in getAllTexts", error);
+        res.status(500).send(error);
     }
 }
 
@@ -36,6 +37,7 @@ exports.createNewText = async (req, res) => {
         }
     } catch(error) {
         console.log("Error in createNewText", error);
+        res.status(500).send(error);
     }
 }
 
@@ -64,7 +66,6 @@ exports.updateText = async (req, res) => {
         // change index so that all players can watch progress. Do it by matching player
         // (which should be unique to session / game) again this will be handled in session
         // db rather than actual text db later
-        console.log(req.body);
         if (req.body.typed_index, req.body.typer) {
             // TODO consider using Text.updateOne() instead (however this returns the values in the document BEFORE the update, so I would)
             // still need to query to ensure the update occurs, but it would be more efficient if I don't need to return the updated document
@@ -77,6 +78,7 @@ exports.updateText = async (req, res) => {
         }
     } catch(error) {
         console.log("Error in updateText", error);
+        res.status(500).send(error);
     }
 }
 

@@ -5,8 +5,8 @@
 // and a password and choose to save their profile or not, (future stuff but cool with persistent database)
 const mongoose = require("mongoose");
 const Player = require("../models/Player");
-const Session = require("../models/Session");
-referralCodes = require("referral-codes");
+const Session = require("../models/session");
+const referralCodeGenerator = require('referral-code-generator');
 
 exports.setJoinedPlayer = async (req, res) => {
     try{
@@ -39,10 +39,11 @@ exports.setJoinedPlayer = async (req, res) => {
 
             }
         } else {
-            res.send("Must provide alias, icon, font, join_code, and color properties to establish a Player Profile");
+            res.status(400).send("Must provide alias, icon, font, join_code, and color properties to establish a Player Profile");
         }
     } catch(error) {
         console.log("Error in selectGame in session controller", error);
+        res.status(500).send(error);
     }
 }
 
@@ -53,11 +54,7 @@ exports.setHostPlayer = async (req, res) => {
             // CREATES Player AND New Session
 
             // generate referral join code
-            const join_code = String(referralCodes.generate({
-                length: 8,
-                count: 1,
-            })[0]).toLowerCase();
-
+            const join_code = referralCodeGenerator.alpha('lowercase', 8);
             const newSession = await new Session({
                 join_code: join_code,
                 started: false
@@ -83,10 +80,11 @@ exports.setHostPlayer = async (req, res) => {
             })
 
         } else {
-            res.send("Must provide alias, icon, font, join_code, and color properties to establish a Player Profile");
+            res.status(400).send("Must provide alias, icon, font, join_code, and color properties to establish a Player Profile");
         }
     } catch(error) {
         console.log("Error in selectGame in session controller", error);
+        res.status(500).send(error);
     }
 }
 
