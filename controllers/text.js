@@ -26,7 +26,7 @@ exports.createNewText = async (req, res) => {
     try{
         // make sure request has entire_text
         if (req.body.entire_text) {
-            const newText = new Text({
+            const newText = await new Text({
                 entire_text: req.body.entire_text
             })
             const savedNewText = await newText.save();

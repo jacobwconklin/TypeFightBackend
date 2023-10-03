@@ -6,8 +6,9 @@
 const mongoose = require("mongoose");
 const Player = require("../models/Player");
 const Session = require("../models/Session");
+referralCodes = require("referral-codes");
 
-exports.setPlayer = async (req, res) => {
+exports.setJoinedPlayer = async (req, res) => {
     try{
         // make sure request has all required params
         if (req.body.alias && req.body.icon && req.body.font && req.body.color && req.body.join_code ) {
@@ -18,25 +19,69 @@ exports.setPlayer = async (req, res) => {
                 res.status(500).send("COULD NOT FIND SESSION WITH JOIN CODE: ", req.body.join_code);
             } else {
 
-            // Create new player and save them and return session._id
+                // Create new player and save them and return session._id
+                // Create new host player and save them and return the entire session object
+                const newJoinedPlayer = await new Player({
+                    alias: req.body.alias,
+                    icon: req.body.icon,
+                    font: req.body.font,
+                    color: req.body.color,
+                    session: session
+                })
 
-            
+                const newSavedPlayer = await newJoinedPlayer.save();
                 
-            // // determine game type TODO could be moved to a map or it's own function to spawn games
-            // let savedNewGame;
-            // if (req.body.selected_game === "Quick Keys") {
-            //     const newQuickKeys = new QuickKeysGame({
-            //         session: Session.findById(req.body.sessionId)
-            //         // TODO determine if I should make all results here or make them with first request from each player?
-            //         // can't do it here now because session can't tell me all players...
-            //     })
-            //     savedNewGame = await newQuickKeys.save();
-            // } 
-            // // else if ... 
-            
-            // res.status(200).json(savedNewGame);
+                // return session and player
+                res.status(200).json({
+                    session: session,
+                    player: newSavedPlayer
+                })
 
             }
+        } else {
+            res.send("Must provide alias, icon, font, join_code, and color properties to establish a Player Profile");
+        }
+    } catch(error) {
+        console.log("Error in selectGame in session controller", error);
+    }
+}
+
+exports.setHostPlayer = async (req, res) => {
+    try{
+        // make sure request has all required params
+        if (req.body.alias && req.body.icon && req.body.font && req.body.color ) {
+            // CREATES Player AND New Session
+
+            // generate referral join code
+            const join_code = String(referralCodes.generate({
+                length: 8,
+                count: 1,
+            })[0]).toLowerCase();
+
+            const newSession = await new Session({
+                join_code: join_code,
+                started: false
+            })
+
+            const newSavedSession = await newSession.save();
+
+            // Create new host player and save them and return the entire session object
+            const newHostPlayer = await new Player({
+                alias: req.body.alias,
+                icon: req.body.icon,
+                font: req.body.font,
+                color: req.body.color,
+                session: newSavedSession
+            })
+
+            const newSavedPlayer = await newHostPlayer.save();
+            
+            // return session and player
+            res.status(200).json({
+                session: newSavedSession,
+                player: newSavedPlayer
+            })
+
         } else {
             res.send("Must provide alias, icon, font, join_code, and color properties to establish a Player Profile");
         }

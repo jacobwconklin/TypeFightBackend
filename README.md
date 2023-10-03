@@ -15,3 +15,8 @@ TO COPY AND RUN REPO NEED:
 
 Deploy by installing Azure App Service extension, then from the command pallete go to azure sign in,
 then use the command pallete to run azure deploy web app
+
+## Notes
+
+Client (front-end) should be expected to keep playerId and sessionId and should only need these
+"keys" for each endpoint plus situational values. 
