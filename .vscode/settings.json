@@ -2,5 +2,7 @@
     "appService.zipIgnorePattern": [
         "node_modules{,/**}",
         ".vscode{,/**}"
-    ]
+    ],
+    "appService.defaultWebAppToDeploy": "/subscriptions/cb2a267c-5c14-429d-984d-537aed044014/resourceGroups/TypeFight_group/providers/Microsoft.Web/sites/TypeFightBackend",
+    "appService.deploySubpath": "."
 }

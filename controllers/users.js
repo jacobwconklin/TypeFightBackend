@@ -10,6 +10,8 @@ const referralCodeGenerator = require('referral-code-generator');
 
 exports.setJoinedPlayer = async (req, res) => {
     try{
+        // TODO potentially don't allow players to join a session that has begun? I don't see why though
+
         // make sure request has all required params
         if (req.body.alias && req.body.icon && req.body.font && req.body.color && req.body.join_code ) {
             // CREATES Player and SETS them in a session at the same time, not by modifying the db but by
@@ -18,6 +20,8 @@ exports.setJoinedPlayer = async (req, res) => {
             if (session == null) {
                 res.status(500).send("COULD NOT FIND SESSION WITH JOIN CODE: ", req.body.join_code);
             } else {
+
+                // TODO dissalow duplicate player names (not actually a problem so leaving for now)
 
                 // Create new player and save them and return session._id
                 // Create new host player and save them and return the entire session object

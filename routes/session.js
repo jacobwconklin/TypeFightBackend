@@ -5,6 +5,10 @@ const session_controller = require("../controllers/session");
 /* Get the status for a session*/
 router.post('/status', session_controller.sessionStatus );
 
+
+/* Begin a given session (moves to game select screen)*/
+router.post('/begin', session_controller.begin );
+
 /* Select a game for a given session */
 router.post('/select-game', session_controller.selectGame );
 

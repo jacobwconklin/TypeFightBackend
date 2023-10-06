@@ -7,8 +7,10 @@ const Schema = mongoose.Schema;
 const PlayerSchema = new Schema({
     alias: {type: String, required: true},
     // assemble all of the icons I make selectable here
-    icon: {type: String, enum: ["lizard", "wizard", "ninja", "samurai"] }, 
-    font: { type: String, enum: ["Times New Roman", "Calibri"] },
+    icon: {type: String, enum: ["bee", "knight", "brain", "cookie", "crab", "croissant", "dragon", "hamster", "hedgehog", "koala",
+      "lion", "lizard", "zombman", "ninja", "octopus", "pirate", "samurai", "whale", "thimble", "turkey", "unicorn", "windmill", 
+      "wizard", "zombwoman"] }, 
+    font: { type: String, enum: ["Times New Roman", "Calibri", "Roboto", "Comic Sans"] },
     color: { type: String, }, // store hex value ie #FFFFFF just use a color picker on front-end that will give me this 
     session: { type: mongoose.ObjectId, ref: Session} // optional in case players play solo, but may still create one if easier for consistency
   });

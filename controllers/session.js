@@ -26,12 +26,28 @@ exports.sessionStatus = async (req, res) => {
         if (req.body.sessionId) {
             const currSession = await Session.findById(req.body.sessionId);
             const allPlayers = await Player.find({ session: currSession });
+            // TODO remove playerId's from allPlayers so other users can't access them
             res.status(200).json({started: currSession.started, selected_game: currSession.selected_game, players: allPlayers});
         } else {
             res.status(400).send("Must provide sessionId property to status a session");
         }
     } catch(error) {
         console.log("Error in session status", error);
+        res.status(500).send(error);
+    }
+}
+
+exports.begin = async (req, res) => {
+    try{
+        // make sure request has sessionId
+        if (req.body.sessionId) {
+            const updatedSession = await Session.findByIdAndUpdate(req.body.sessionId, {started: true});
+            res.status(200).json(updatedSession);
+        } else {
+            res.status(400).send("Must provide sessionId property to begin a session");
+        }
+    } catch(error) {
+        console.log("Error in begin session", error);
         res.status(500).send(error);
     }
 }
@@ -104,8 +120,6 @@ exports.wipe = async (req, res) => {
             // delete session
             const sessionDeleted = await Session.findByIdAndDelete(req.body.sessionId);
             res.status(200).json({playersDeleted: numPlayersDeleted, sessionDeleted: sessionDeleted});
-
-            res.status(200).json({started: currSession.started, selected_game: currSession.selected_game, players: allPlayers});
         } else {
             res.status(400).send("Must provide sessionId property to wipe a session");
         }
