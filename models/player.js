@@ -10,7 +10,23 @@ const PlayerSchema = new Schema({
     icon: {type: String, enum: ["bee", "knight", "brain", "cookie", "crab", "croissant", "dragon", "hamster", "hedgehog", "koala",
       "lion", "lizard", "zombman", "ninja", "octopus", "pirate", "samurai", "whale", "thimble", "turkey", "unicorn", "windmill", 
       "wizard", "zombwoman"] }, 
-    font: { type: String, enum: ["Times New Roman", "Calibri", "Roboto", "Comic Sans"] },
+    font: { type: String, enum: [
+      'Black Ops One',
+      'Calibri',
+      'Coda',
+      'Comic Neue',
+      'Federant',
+      'Gabriela',
+      'Grenze Gotisch',
+      'Kalam',
+      'Merriweather',
+      'Nova Square',
+      'Reggae One',
+      'Roboto',
+      'Roboto Serif Variable',
+      'Times New Roman',
+      'Tomorrow'
+  ]},
     color: { type: String, }, // store hex value ie #FFFFFF just use a color picker on front-end that will give me this 
     session: { type: mongoose.ObjectId, ref: Session} // optional in case players play solo, but may still create one if easier for consistency
   });
