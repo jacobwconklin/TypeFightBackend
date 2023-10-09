@@ -12,6 +12,9 @@ router.post('/begin', session_controller.begin );
 /* Select a game for a given session */
 router.post('/select-game', session_controller.selectGame );
 
+/* Leave a game (navigates back to game-select) */
+router.post('/leave-game', session_controller.leaveGame );
+
 /* Wipe the session TODO for now delete all players later them persist if they make user and pass */
 router.post('/wipe', session_controller.wipe );
 

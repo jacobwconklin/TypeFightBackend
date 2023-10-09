@@ -15,7 +15,7 @@ const Schema = mongoose.Schema;
 // from thsi model player's screen needs to be able to paint entire UI View
 
 const QuickKeysGameSchema = new Schema({
-    chosen_prompt: { type: mongoose.ObjectId, ref: Prompt },
+    prompt: { type: String},
     results: [{type: Schema.Types.ObjectId, ref: Result}],
     // the session it belongs to so that player http requests are easily applied to the right game
     session: { type: mongoose.ObjectId, ref: Session }

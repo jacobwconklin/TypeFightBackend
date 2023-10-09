@@ -22,7 +22,7 @@ exports.quickKeysGameStatus = async (req, res) => {
         if (req.body.sessionId) {
             const currSession = await Session.findById(req.body.sessionId);
             const quickKeysGame = await QuickKeys.findOne({ session: currSession });
-            // need chosen_prompt to decide if on select prompt screen or starting game
+            // need prompt to decide if on select prompt screen or starting game
             // get name of player, index, and time (if it exists) for reach result to create view 
 
             const playerResults = await Promise.all(quickKeysGame.results.map( async (resultId) => {
@@ -31,7 +31,7 @@ exports.quickKeysGameStatus = async (req, res) => {
                 const playerObject = await Player.findById(resultObject.player);
                 return { player: playerObject, time: resultObject.time, index: resultObject.index }
             }));
-            res.status(200).json({prompt: quickKeysGame.chosen_prompt, results: playerResults});
+            res.status(200).json({prompt: quickKeysGame.prompt, results: playerResults});
         } else {
             res.status(400).send("Must provide sessionId to status a quick keys game");
         }
@@ -90,13 +90,70 @@ exports.selectPrompt = async (req, res) => {
             // set prompt as the prompt for the Quick Keys Game instance
             const currSession = await Session.findById(req.body.sessionId);
             const chosen_prompt = await Prompt.findById(req.body.promptId);
-            const updatedQuickKeysGame = await QuickKeys.findOneAndUpdate({ session: currSession }, { chosen_prompt: chosen_prompt })
+            const updatedQuickKeysGame = await QuickKeys.findOneAndUpdate({ session: currSession }, { prompt: chosen_prompt.prompt })
             res.status(200).json(updatedQuickKeysGame);
         } else {
             res.status(400).send("Must provide promptId and sessionId properties to select a Prompt");
         }
     } catch(error) {
         console.log("Error in select Prompt", error);
+        res.status(500).send(error);
+    }
+}
+
+// un-select prompt to select a new one after game ends
+// reset player indicies and times, and show prompt select screen again
+exports.newPrompt = async (req, res) => {
+    try{
+        // make sure request has sessionId
+        if (req.body.sessionId) {
+            const currSession = await Session.findById(req.body.sessionId);
+            const quickKeysGame = await QuickKeys.findOne({ session: currSession });
+            // set prompt
+            quickKeysGame.prompt = undefined;
+            quickKeysGame.results = quickKeysGame.results.map(result => 
+                {
+                    return {
+                        ...result,
+                        index: 0,
+                        time: undefined,
+                    }
+                })
+            const savedQuickKeysGame = quickKeysGame.save();
+            res.status(200).json(savedQuickKeysGame);
+        } else {
+            res.status(400).send("Must provide sessionId properties to return to select a new Prompt");
+        }
+    } catch(error) {
+        console.log("Error in new Prompt", error);
+        res.status(500).send(error);
+    }
+}
+
+// keep selected prompt for a rematch
+// reset player indicies and times, but keep prompt selected
+exports.rematch  = async (req, res) => {
+    try{
+        // make sure request has sessionId
+        if (req.body.sessionId) {
+            const currSession = await Session.findById(req.body.sessionId);
+            const quickKeysGame = await QuickKeys.findOne({ session: currSession });
+            // leave prompt as is
+            quickKeysGame.results = quickKeysGame.results.map(result => 
+                {
+                    return {
+                        ...result,
+                        index: 0,
+                        time: undefined,
+                    }
+                })
+            const savedQuickKeysGame = quickKeysGame.save();
+            res.status(200).json(savedQuickKeysGame);
+        } else {
+            res.status(400).send("Must provide sessionId property to rematch");
+        }
+    } catch(error) {
+        console.log("Error in rematch in Quick Keys", error);
         res.status(500).send(error);
     }
 }

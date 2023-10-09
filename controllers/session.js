@@ -76,7 +76,7 @@ exports.selectGame = async (req, res) => {
                 const newQuickKeys = await new QuickKeysGame({
                     session: currSession._id,
                     results: initialResults,
-                    chosen_prompt: undefined // prompt hasn't been selected yet, if a rematch is called will want special function that plugs
+                    prompt: undefined // prompt hasn't been selected yet, if a rematch is called will want special function that plugs
                     // the same prompt back in
                 });
                 // initialResults.forEach( async (res) => {
@@ -95,6 +95,23 @@ exports.selectGame = async (req, res) => {
             res.status(200).json(savedNewGame);
         } else {
             res.status(400).send("Must provide selected_game and sessionId properties to select a game");
+        }
+    } catch(error) {
+        console.log("Error in selectGame in session controller", error);
+        res.status(500).send(error);
+    }
+}
+
+exports.leaveGame = async (req, res) => {
+    try{
+        // make sure request has sessionId
+        if ( req.body.sessionId) {
+    
+            // determine game type TODO could be moved to a map or it's own function to spawn games
+            const updatedSession = await Session.findByIdAndUpdate(req.body.sessionId, {selected_game: undefined})
+            res.status(200).json(updatedSession);
+        } else {
+            res.status(400).send("Must provide  sessionId property to leave a game");
         }
     } catch(error) {
         console.log("Error in selectGame in session controller", error);

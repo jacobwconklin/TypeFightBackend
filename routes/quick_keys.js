@@ -16,6 +16,12 @@ router.post('/prompts', quick_keys_controller.getPrompts);
 /* select a prompt */
 router.post('/prompt', quick_keys_controller.selectPrompt);
 
+/* select a prompt */
+router.post('/new', quick_keys_controller.newPrompt);
+
+/* select a prompt */
+router.post('/rematch', quick_keys_controller.rematch);
+
 /* add a prompt */
 router.post('/add', quick_keys_controller.addPrompt);
 
