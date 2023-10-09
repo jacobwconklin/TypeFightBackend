@@ -106,9 +106,10 @@ exports.leaveGame = async (req, res) => {
     try{
         // make sure request has sessionId
         if ( req.body.sessionId) {
-    
             // determine game type TODO could be moved to a map or it's own function to spawn games
-            const updatedSession = await Session.findByIdAndUpdate(req.body.sessionId, {selected_game: undefined})
+            console.log("in leave game");
+            const updatedSession = await Session.findByIdAndUpdate(req.body.sessionId, {selected_game: null})
+            console.log("Updated ?");
             res.status(200).json(updatedSession);
         } else {
             res.status(400).send("Must provide  sessionId property to leave a game");
@@ -129,7 +130,7 @@ exports.wipe = async (req, res) => {
 
             // delete players first 
             let numPlayersDeleted = 0;
-            await Promise.all(allPlayers.forEach( async (player) => {
+            await Promise.all(allPlayers.map( async (player) => {
                 // TODO add logic to leave players with user name + pass
                 await Player.findByIdAndDelete(player._id);
                 numPlayersDeleted++;

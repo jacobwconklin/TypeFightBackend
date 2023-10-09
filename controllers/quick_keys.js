@@ -110,15 +110,11 @@ exports.newPrompt = async (req, res) => {
             const currSession = await Session.findById(req.body.sessionId);
             const quickKeysGame = await QuickKeys.findOne({ session: currSession });
             // set prompt
-            quickKeysGame.prompt = undefined;
-            quickKeysGame.results = quickKeysGame.results.map(result => 
-                {
-                    return {
-                        ...result,
-                        index: 0,
-                        time: undefined,
-                    }
-                })
+            quickKeysGame.prompt = null;
+            // find each result object and set its index to 0 and time to null
+            await Promise.all(quickKeysGame.results.map( async (res) => {
+                await Result.findByIdAndUpdate(res, {index: 0, time: null});
+            }))
             const savedQuickKeysGame = quickKeysGame.save();
             res.status(200).json(savedQuickKeysGame);
         } else {
@@ -135,20 +131,15 @@ exports.newPrompt = async (req, res) => {
 exports.rematch  = async (req, res) => {
     try{
         // make sure request has sessionId
+        console.log("In rematch");
         if (req.body.sessionId) {
             const currSession = await Session.findById(req.body.sessionId);
             const quickKeysGame = await QuickKeys.findOne({ session: currSession });
-            // leave prompt as is
-            quickKeysGame.results = quickKeysGame.results.map(result => 
-                {
-                    return {
-                        ...result,
-                        index: 0,
-                        time: undefined,
-                    }
-                })
-            const savedQuickKeysGame = quickKeysGame.save();
-            res.status(200).json(savedQuickKeysGame);
+            // find each result object and set its index to 0 and time to null
+            await Promise.all(quickKeysGame.results.map( async (res) => {
+                await Result.findByIdAndUpdate(res, {index: 0, time: null});
+            }))
+            res.status(200).json(quickKeysGame);
         } else {
             res.status(400).send("Must provide sessionId property to rematch");
         }
@@ -206,7 +197,7 @@ exports.wipe = async(req, res) => {
 
             // delete results first TODO don't think deleting QuickKeys would handle this
             let numResultsDeleted = 0;
-            await Promise.all(quickKeysGame.results.forEach( async (res) => {
+            await Promise.all(quickKeysGame.results.map( async (res) => {
                 await Result.findByIdAndDelete(res);
                 numResultsDeleted++;
             }))
