@@ -5,6 +5,7 @@ const Session = require("../models/session");
 const QuickKeysGame = require ("../models/quick_keys/quick_keys_game");
 const Player = require("../models/Player");
 const result = require("../models/quick_keys/result");
+const { beginSpacebarInvaders } = require("./spacebar_invaders");
 
 // Temporarily let front-end hard code in all games, if this were a public website would want the games names and images 
 // stored and retrieved through the server to dynamically add and remove games
@@ -84,7 +85,11 @@ exports.selectGame = async (req, res) => {
                 // });
                 savedNewGame = await newQuickKeys.save();
             } 
-            // else if ... 
+            else if (req.body.selected_game === "Spacebar Invaders") {
+                // HERE begin function was moved to spacebar_invaders controller to monitor
+                // interval, probably cleaner than how quick keys is started above ^
+                savedNewGame = await beginSpacebarInvaders(req.body.sessionId);
+            } 
             else { 
                 // Invalid name for selected_game
                 res.status(400).send("INVALID name for selected_game: ", req.body.selected_game);
@@ -146,6 +151,8 @@ exports.wipe = async (req, res) => {
         res.status(500).send(error);
     }
 }
+
+// TODO handle one player leaving session (for now if they click TypeFight, in future if they exit websocket)
 
 // get all chat messages
 

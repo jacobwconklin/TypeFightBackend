@@ -15,7 +15,7 @@ const Schema = mongoose.Schema;
 // A relational model would simply store the primary key of the Session in the player Object,
 // but Mongo allows storing arrays of subdocuments within a document so I will probably do that
 const SessionSchema = new Schema({
-    selected_game: {type: String, enum: ["Quick Keys", "Type Fight", "Word War 1"]},
+    selected_game: {type: String, enum: ["Quick Keys", "Type Fight", "Word War 1", "Spacebar Invaders"]},
     join_code: { type: String, required: true, maxLength: 12 },
     started: {type: Boolean, default: false}
     // TODO in the future can hold chats here where it will be an array of chat models each holding a player
