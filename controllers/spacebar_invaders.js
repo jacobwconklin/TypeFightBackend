@@ -5,19 +5,21 @@ const mongoose = require("mongoose");
 const Session = require("../models/session");
 const SpacebarInvaders = require("../models/spacebar_invaders/spacebar_invaders_game");
 const Enemy = require("../models/spacebar_invaders/enemy");
+const randomWords = require("better-random-words");
 
-const innerBound = 2000;
-const outerBound = 3000;
+const innerBound = 300;
+const outerBound = 500; // TODO may increase this on higher waves ... 
+const millisecondsBetweenWaves = 9000;
 
 // will effectively store the "intervals" here on the server in a map, so that they can be destroyed when players finish the game
 // connect each interval to their session by session id
 const sessionToIntervalMap = {}
 
 // handle game "tick" performing all logic to move enemies and see if they collide with earth 
-const updateGame = async (spacebarInvadersId) => {
+const updateGame = async (spacebarInvadersId, sessionId) => {
     // 
     const game = await SpacebarInvaders.findById(spacebarInvadersId);
-    if (game.enemies.length > 0) {
+    if (game.enemies && game.enemies.length > 0) {
         // try grabbing each enemy, if they happened to be deleted but still in the list for a split second
         // do nothing
         await Promise.all(game.enemies.map(async (enemyId) => {
@@ -31,8 +33,26 @@ const updateGame = async (spacebarInvadersId) => {
                 if ( enemyObject.x < 10 && enemyObject.x > -10 && enemyObject.y < 10 && enemyObject.y > -10  ) {
                     // destroy enemy and damage earth
                     game.health -= 1;
-                    game.enemies = game.enemies.filter(enemy => enemy._id != enemyId);
-                    await game.save();
+                    game.enemies = game.enemies.filter(enemy => !enemy.equals(enemyId));
+                    // if 0 health reached game is over end the interval
+                    const savedGame = await game.save();
+                    if (savedGame.health < 1) {
+                        // game is over
+                        // clearInterval(sessionToIntervalMap["" + req.body.sessionId]);
+                        // delete sessionToIntervalMap["" + req.body.sessionId];
+                        // const deletedGame = await SpacebarInvaders.findOneAndDelete({ session: currSession });
+                    } else if (game.enemies.length === 0 ) {
+                        // wave completed
+                        savedGame.wave++;
+                        await savedGame.save();
+                        // wait then spawn new wave
+                        setTimeout(async () => {
+                            // commence new wave
+                            const currGame = await SpacebarInvaders.findById(spacebarInvadersId);
+                            currGame.enemies = await spawnEnemies(currGame.wave, sessionId);
+                            await currGame.save();
+                        }, millisecondsBetweenWaves);
+                    }
                     await Enemy.findByIdAndDelete(enemyId);
                 } else {
                     await enemyObject.save();
@@ -41,6 +61,17 @@ const updateGame = async (spacebarInvadersId) => {
                 console.log("Error updating game for an enemy");
             }
         }))
+    } 
+    // if game object is gone clear interval (this is just a backup and should not be how interval is cleared)
+    else if (!game.enemies && !game.wave && !game.health) { 
+        // TODO rather than deleting everything may want way to re-boot interval if something happens to server picking up where
+        // game still is? 
+        try {
+            clearInterval(sessionToIntervalMap["" + sessionId]);
+            delete sessionToIntervalMap["" + req.body.sessionId];
+        } catch(error) {
+            console.log("Error clearing interval within interval in spacebar invaders");
+        }
     }
 }
 
@@ -52,7 +83,7 @@ exports.spacebarInvadersStatus = async (req, res) => {
             const currSession = await Session.findById(req.body.sessionId);
             const game = await SpacebarInvaders.findOne({ session: currSession });
 
-            const enemies = await Promise.all(game.results.map( async (enemyId) => {
+            const enemies = await Promise.all(game.enemies.map( async (enemyId) => {
                 const enemyObject = await Enemy.findById(enemyId);
                 return enemyObject;
             }));
@@ -75,15 +106,16 @@ exports.beginSpacebarInvaders = async (sessionId) => {
                 session: sessionId
             })
             const savedNewGame = await newGame.save();
-            const gameInterval = setInterval(updateGame(savedNewGame._id), 500); // TODO tweak interval
+            const gameInterval = setInterval(updateGame, 500, savedNewGame._id, sessionId); // TODO tweak interval
             // save interval so it can be cleared later (can be accessed the same way) i.e.: sessionToIntervalMap["" + game._id]
             sessionToIntervalMap["" + savedNewGame._id] = gameInterval;
             // give a few seconds before first round of enemies
             setTimeout(async () => {
-                const game = SpacebarInvaders.findById(savedNewGame._id);
-                game.enemies = await spawnEnemies(0);
-                await game.save();
-            }, 2000);
+                const game = await SpacebarInvaders.findById(savedNewGame._id);
+                const spawnedEnemies = await spawnEnemies(0, sessionId);
+                game.enemies = spawnedEnemies;
+                const savedGame = await game.save();
+            }, 3000);
             
             return savedNewGame;
         } else {
@@ -105,31 +137,42 @@ exports.destroy = async(req, res) => {
             const currGame = await SpacebarInvaders.findOne({session: currSession});
             // again oldResult probably won't be of any value to front-end may just disregard
             // get length of remaining enemies from currSession
-            if (currSession.enemies.length === 1) {
+            if (currGame.enemies.length === 1) {
                 // may be killing the last enemny (just make sure someone else doesn't get to it first)
                 // THIS IS WHERE RACE CONDITIONS MAY HAPPEN BETWEEN CHECKING LENGTH and checking if 
                 // ALTHOUGH ASYNC AWAIT may already handle that forcing this whole function to conclude? We'll see
                 //  possible mutex package: https://www.npmjs.com/package/async-mutex
                 // the enemy is eliminated, if eliminatedEnemy has a value
-                const eliminatedEnemy = await Enemy.findOneAndDelete({word: req.body.word});
+                // will crash if word doesn't match, but try catch will simply return 500 and server will go on
+                const eliminatedEnemy = await Enemy.findOneAndDelete({word: req.body.word, session: req.body.sessionId});
                 // remove that id from the session
                 if (eliminatedEnemy._id) {
-                    currGame.enemies = currGame.enemies.filter(enemy => enemy._id != eliminatedEnemy._id);
+                    currGame.enemies = currGame.enemies.filter(enemy => enemy !== null && !enemy.equals(eliminatedEnemy._id));
                     currGame.wave += 1;
                     await currGame.save();
                     // wave ended
                     setTimeout(async () => {
                         // commence new wave
-                        currGame.enemies = await spawnEnemies(currGame.wave);
+                        currGame.enemies = await spawnEnemies(currGame.wave, req.body.sessionId);
                         await currGame.save();
-                    }, 3000);
+                    }, millisecondsBetweenWaves);
                 }
             } else {
                 // just destroy enemy
                 // delete and remove from curr game's array
                 const eliminatedEnemy = await Enemy.findOneAndDelete({word: req.body.word});
-                currGame.enemies = currGame.enemies.filter(enemy => enemy._id != eliminatedEnemy._id);
-                await currGame.save();
+                // Found that comparing two new Object('id') doesn't give equality unless using .equals() !!
+                // console.log("Eliminated the enemy: ", eliminatedEnemy); 
+                // console.log("New enemy array is: ", currGame.enemies.filter(enemy => {
+                //     console.log("Enemy is: ", enemy);
+                //     console.log("Eleminated enemy id is: ", eliminatedEnemy._id);
+                //     console.log("Equality check is: ", enemy !== eliminatedEnemy._id);
+                //     console.log("String Equality check is: ", String(enemy) !== String(eliminatedEnemy._id));
+                //     return String(enemy) !== String(eliminatedEnemy._id);
+                // }));
+                currGame.enemies = currGame.enemies.filter(enemy => enemy !== null && !enemy.equals(eliminatedEnemy._id));
+                const savedGame = await currGame.save();
+                console.log("Saved game is: ", savedGame);
             }
             res.status(200).send("Enemy Destroyed");
         } else {
@@ -142,22 +185,46 @@ exports.destroy = async(req, res) => {
 }
 
 // wipe a game (if players all leave or choose to play a new game)
+// will cancel running interval as well as remove memory from Mongo DB
+exports.wipe = async(req, res) => {
+    try{
+        if (req.body.sessionId) {
+            const currSession = await Session.findById(req.body.sessionId);
+            // shut down interval first
+            clearInterval(sessionToIntervalMap["" + req.body.sessionId]);
+            delete sessionToIntervalMap["" + req.body.sessionId];
+            const deletedGame = await SpacebarInvaders.findOneAndDelete({ session: currSession });
+            res.status(200).json(deletedGame);
+        } else {
+            res.status(400).send("Must provide sessionId to wipe a spacebar invaders game");
+        }
+    } catch(error) {
+        console.log("Error in spacebar invaders wipe", error);
+        res.status(500).send(error);
+    }
+}
 
 
 // returns array of new enemy ids based on wave provided
-const spawnEnemies = async (wave) => {
+const spawnEnemies = async (wave, sessionId) => {
     let newEnemyIds = [];
-    for (let i = 0; i < (wave * 3) + 5; i++) { // TODO better curve then straight linear
+    let enemyCount = (wave * 3) + 3;
+    for (let i = 0; i < enemyCount; i++) { // TODO better curve then straight linear
         // TODO add loops for each type of enemy Like get more big words as game progresses
+        /*
+        random-words package from: https://www.npmjs.com/package/better-random-words
+        */
+        
         const newEnemy = new Enemy({
-            word: "love", 
-            x: Math.floor(Math.random() * (outerBound - innerBound) + innerBound) * (Math.random > 0.5 ? 1 : -1),
-            y: Math.floor(Math.random() * (outerBound - innerBound) + innerBound) * (Math.random > 0.5 ? 1 : -1),
+            session: sessionId,
+            word: randomWords(), 
+            x: Math.floor(Math.random() * (outerBound + (wave * 40) - innerBound) + innerBound) * (Math.random > 0.5 ? 1 : -1), // TODO tweak change on larger waves
+            y: Math.floor(Math.random() * (outerBound + (wave * 40) - innerBound) + innerBound) * (Math.random > 0.5 ? 1 : -1),
         });
         await newEnemy.save();
         newEnemyIds.push(newEnemy._id);
         // on last loop return array ofs ids
-        if (i + 1 === (wave * 3) + 5) {
+        if (i + 1 === enemyCount) {
             return newEnemyIds;
         }
     }

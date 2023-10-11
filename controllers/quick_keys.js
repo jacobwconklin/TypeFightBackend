@@ -44,16 +44,18 @@ exports.quickKeysGameStatus = async (req, res) => {
 // add a new prompt 
 exports.addPrompt = async (req, res) => {
     try {
-        if (req.body.category && req.body.length && req.body.prompt) {
+        if (req.body.category && req.body.length && req.body.title && req.body.prompt) {
             const newPrompt = await new Prompt({
                 prompt: req.body.prompt,
                 category: req.body.category,
-                length: req.body.length
+                length: req.body.length,
+                title: req.body.title,
+                author: req.body.author? req.body.author : undefined
             });
             const savedNewPrompt = await newPrompt.save();
             res.status(200).send(savedNewPrompt);
         } else {
-            res.status(400).send("Must provide category, length, and prompt properties to add a Prompt");
+            res.status(400).send("Must provide category, length, title, and prompt properties to add a Prompt");
         }
     } catch(error) {
         console.log("Error in addPrompt", error);

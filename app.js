@@ -11,8 +11,9 @@ var logger = require('morgan');
 
 var indexRouter = require('./routes/index');
 var usersRouter = require('./routes/users');
-var sessionRouter = require('./routes/session')
-var quickKeysRouter = require('./routes/quick_keys')
+var sessionRouter = require('./routes/session');
+var quickKeysRouter = require('./routes/quick_keys');
+var spacebarInvadersRouter = require('./routes/spacebar_invaders');
 var textRouter = require('./routes/text');
 
 app.use(cors())
@@ -50,6 +51,7 @@ app.use('/', indexRouter);
 app.use('/users', usersRouter);
 app.use('/session', sessionRouter)
 app.use('/quick-keys', quickKeysRouter);
+app.use('/spacebar-invaders', spacebarInvadersRouter);
 app.use('/text', textRouter);
 
 // catch 404 and forward to error handler

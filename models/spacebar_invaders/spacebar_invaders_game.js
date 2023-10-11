@@ -21,10 +21,13 @@ const SpacebarInvadersGameSchema = new Schema({
     session: { type: mongoose.ObjectId, ref: Session },
     enemies: [{type: Schema.Types.ObjectId, ref: Enemy}],
     wave: {type: Number, default: 0}, // wave number will determine # and difficulty of enemies spawned
-    health: {type: Number, default: 3} // each collision with earth loses one health, at all health lost 
+    health: {type: Number, default: 3}, // each collision with earth loses one health, at all health lost 
     // show gameover screen and kill session until re-play button pressed. 
     // TODO may want player results (like quick keys) to show game statistics like enemies killed, total number
     // of characters sent. 
+    // TODO may implement this state if there is a customization screen before starting,
+    // If so logic to launch spacebar invader game and actually begin the game interval will have to be separated in the controller.
+    // state: { type: String, enum: ["Preparing", "Started", "Finished"], default: "Preparing"},
   });
   
   // Export model
