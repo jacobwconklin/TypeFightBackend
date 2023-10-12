@@ -9,9 +9,9 @@ const randomWords = require("better-random-words");
 
 const innerBound = 200;
 const outerBound = 500; // TODO may increase this on higher waves ... 
-const millisecondsBetweenWaves = 9000;
+const millisecondsBetweenWaves = 800;
 // TODO speed up with each wave
-const creepSpeed = 15;
+const creepSpeed = 15;  // 15;
 const updateGameInterval = 1000;
 
 // will effectively store the "intervals" here on the server in a map, so that they can be destroyed when players finish the game
@@ -30,15 +30,16 @@ const updateGame = async (spacebarInvadersId, sessionId) => {
                 try {
                     // move enemy towards 0-0 TODO change speed of movement based on word length maybe? 
                     const enemyObject = await Enemy.findById(enemyId);
+                    const creepSpeedPlusWaveFactor = game.wave > 5 ? creepSpeed + 5 + Math.floor(game.wave / 2) : creepSpeed + game.wave;
                     if (enemyObject.x > 8) {
-                        enemyObject.x = enemyObject.x - creepSpeed;
+                        enemyObject.x = enemyObject.x - creepSpeedPlusWaveFactor;
                     } else if (enemyObject.x < -8) {
-                        enemyObject.x = enemyObject.x + creepSpeed;
+                        enemyObject.x = enemyObject.x + creepSpeedPlusWaveFactor;
                     }
                     if (enemyObject.y > 8) {
-                        enemyObject.y = enemyObject.x - creepSpeed;
+                        enemyObject.y = enemyObject.y - creepSpeedPlusWaveFactor;
                     } else if (enemyObject.y < -8) {
-                        enemyObject.y = enemyObject.y + creepSpeed;
+                        enemyObject.y = enemyObject.y + creepSpeedPlusWaveFactor;
                     }
                     // check for earth collision
                     // TODO measurement may vary based on image
@@ -97,7 +98,6 @@ exports.spacebarInvadersStatus = async (req, res) => {
         if (req.body.sessionId) {
             const currSession = await Session.findById(req.body.sessionId);
             const game = await SpacebarInvaders.findOne({ session: currSession });
-
             const enemies = await Promise.all(game.enemies.map( async (enemyId) => {
                 const enemyObject = await Enemy.findById(enemyId);
                 return enemyObject;
