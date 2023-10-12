@@ -7,9 +7,12 @@ const SpacebarInvaders = require("../models/spacebar_invaders/spacebar_invaders_
 const Enemy = require("../models/spacebar_invaders/enemy");
 const randomWords = require("better-random-words");
 
-const innerBound = 300;
+const innerBound = 200;
 const outerBound = 500; // TODO may increase this on higher waves ... 
 const millisecondsBetweenWaves = 9000;
+// TODO speed up with each wave
+const creepSpeed = 15;
+const updateGameInterval = 1000;
 
 // will effectively store the "intervals" here on the server in a map, so that they can be destroyed when players finish the game
 // connect each interval to their session by session id
@@ -17,61 +20,73 @@ const sessionToIntervalMap = {}
 
 // handle game "tick" performing all logic to move enemies and see if they collide with earth 
 const updateGame = async (spacebarInvadersId, sessionId) => {
-    // 
-    const game = await SpacebarInvaders.findById(spacebarInvadersId);
-    if (game.enemies && game.enemies.length > 0) {
-        // try grabbing each enemy, if they happened to be deleted but still in the list for a split second
-        // do nothing
-        await Promise.all(game.enemies.map(async (enemyId) => {
-            try {
-                // move enemy towards 0-0 TODO change speed of movement based on word length maybe? 
-                const enemyObject = await Enemy.findById(enemyId);
-                enemyObject.x = enemyObject.x > 0 ? enemyObject.x - 5 : enemyObject.x + 5;
-                enemyObject.y = enemyObject.y > 0 ? enemyObject.y - 5 : enemyObject.y + 5;
-                // check for earth collision
-                // TODO measurement may vary based on image
-                if ( enemyObject.x < 10 && enemyObject.x > -10 && enemyObject.y < 10 && enemyObject.y > -10  ) {
-                    // destroy enemy and damage earth
-                    game.health -= 1;
-                    game.enemies = game.enemies.filter(enemy => !enemy.equals(enemyId));
-                    // if 0 health reached game is over end the interval
-                    const savedGame = await game.save();
-                    if (savedGame.health < 1) {
-                        // game is over
-                        // clearInterval(sessionToIntervalMap["" + req.body.sessionId]);
-                        // delete sessionToIntervalMap["" + req.body.sessionId];
-                        // const deletedGame = await SpacebarInvaders.findOneAndDelete({ session: currSession });
-                    } else if (game.enemies.length === 0 ) {
-                        // wave completed
-                        savedGame.wave++;
-                        await savedGame.save();
-                        // wait then spawn new wave
-                        setTimeout(async () => {
-                            // commence new wave
-                            const currGame = await SpacebarInvaders.findById(spacebarInvadersId);
-                            currGame.enemies = await spawnEnemies(currGame.wave, sessionId);
-                            await currGame.save();
-                        }, millisecondsBetweenWaves);
+    try {
+        const game = await SpacebarInvaders.findById(spacebarInvadersId);
+        
+        if (game && game.enemies && game.enemies.length > 0) {
+            // try grabbing each enemy, if they happened to be deleted but still in the list for a split second
+            // do nothing
+            await Promise.all(game.enemies.map(async (enemyId) => {
+                try {
+                    // move enemy towards 0-0 TODO change speed of movement based on word length maybe? 
+                    const enemyObject = await Enemy.findById(enemyId);
+                    if (enemyObject.x > 8) {
+                        enemyObject.x = enemyObject.x - creepSpeed;
+                    } else if (enemyObject.x < -8) {
+                        enemyObject.x = enemyObject.x + creepSpeed;
                     }
-                    await Enemy.findByIdAndDelete(enemyId);
-                } else {
-                    await enemyObject.save();
+                    if (enemyObject.y > 8) {
+                        enemyObject.y = enemyObject.x - creepSpeed;
+                    } else if (enemyObject.y < -8) {
+                        enemyObject.y = enemyObject.y + creepSpeed;
+                    }
+                    // check for earth collision
+                    // TODO measurement may vary based on image
+                    if ( enemyObject.x < 10 && enemyObject.x > -10 && enemyObject.y < 10 && enemyObject.y > -10  ) {
+                        // destroy enemy and damage earth
+                        game.health -= 1;
+                        game.enemies = game.enemies.filter(enemy => !enemy.equals(enemyId));
+                        // if 0 health reached game is over end the interval
+                        const savedGame = await game.save();
+                        if (savedGame.health < 1) {
+                            // game is over
+                            // clearInterval(sessionToIntervalMap["" + req.body.sessionId]);
+                            // delete sessionToIntervalMap["" + req.body.sessionId];
+                            // const deletedGame = await SpacebarInvaders.findOneAndDelete({ session: currSession });
+                        } else if (game.enemies.length === 0 ) {
+                            // wave completed
+                            savedGame.wave++;
+                            await savedGame.save();
+                            // wait then spawn new wave
+                            setTimeout(async () => {
+                                // commence new wave
+                                const currGame = await SpacebarInvaders.findById(spacebarInvadersId);
+                                currGame.enemies = await spawnEnemies(currGame.wave, sessionId);
+                                await currGame.save();
+                            }, millisecondsBetweenWaves);
+                        }
+                        await Enemy.findByIdAndDelete(enemyId);
+                    } else {
+                        await enemyObject.save();
+                    }
+                } catch (error) {
+                    console.log("Error updating game for an enemy");
                 }
-            } catch (error) {
-                console.log("Error updating game for an enemy");
+            }))
+        } 
+        // if game object is gone clear interval (this is just a backup and should not be how interval is cleared)
+        else if (game === null || (!game.enemies && !game.wave && !game.health)) { 
+            // TODO rather than deleting everything may want way to re-boot interval if something happens to server picking up where
+            // game still is? 
+            try {
+                // clearInterval(sessionToIntervalMap["" + sessionId]);
+                // delete sessionToIntervalMap["" + req.body.sessionId];
+            } catch(error) {
+                console.log("Error clearing interval within interval in spacebar invaders");
             }
-        }))
-    } 
-    // if game object is gone clear interval (this is just a backup and should not be how interval is cleared)
-    else if (!game.enemies && !game.wave && !game.health) { 
-        // TODO rather than deleting everything may want way to re-boot interval if something happens to server picking up where
-        // game still is? 
-        try {
-            clearInterval(sessionToIntervalMap["" + sessionId]);
-            delete sessionToIntervalMap["" + req.body.sessionId];
-        } catch(error) {
-            console.log("Error clearing interval within interval in spacebar invaders");
         }
+    } catch (error) {
+        console.log("Error in update game: ", error);
     }
 }
 
@@ -106,7 +121,7 @@ exports.beginSpacebarInvaders = async (sessionId) => {
                 session: sessionId
             })
             const savedNewGame = await newGame.save();
-            const gameInterval = setInterval(updateGame, 500, savedNewGame._id, sessionId); // TODO tweak interval
+            const gameInterval = setInterval(updateGame, updateGameInterval, savedNewGame._id, sessionId); // TODO tweak interval
             // save interval so it can be cleared later (can be accessed the same way) i.e.: sessionToIntervalMap["" + game._id]
             sessionToIntervalMap["" + savedNewGame._id] = gameInterval;
             // give a few seconds before first round of enemies
@@ -172,9 +187,8 @@ exports.destroy = async(req, res) => {
                 // }));
                 currGame.enemies = currGame.enemies.filter(enemy => enemy !== null && !enemy.equals(eliminatedEnemy._id));
                 const savedGame = await currGame.save();
-                console.log("Saved game is: ", savedGame);
             }
-            res.status(200).send("Enemy Destroyed");
+            res.status(200).json({message: "Enemy Destroyed"});
         } else {
             res.status(400).send("Must provide sessionId and word properties to update destroying an enemy");
         }
@@ -214,12 +228,22 @@ const spawnEnemies = async (wave, sessionId) => {
         /*
         random-words package from: https://www.npmjs.com/package/better-random-words
         */
+        // x = r × cos( θ )
+        // y = r × sin( θ )
+        // generate random angle and r in range of inner and outer bounds for polar coordinates
+        // then convert them to cartesian
+        // TODO tweak change on larger waves
+        const r = ( (Math.random() * (outerBound + (wave * 40) - innerBound)) + innerBound);
+        const angleInRadians = (Math.random() * 2 * Math.PI );
+        console.log("r is: ", r);
+        console.log("x is: ", r * Math.cos(angleInRadians));
+        console.log("y is: ", r * Math.sin(angleInRadians));
         
         const newEnemy = new Enemy({
             session: sessionId,
             word: randomWords(), 
-            x: Math.floor(Math.random() * (outerBound + (wave * 40) - innerBound) + innerBound) * (Math.random > 0.5 ? 1 : -1), // TODO tweak change on larger waves
-            y: Math.floor(Math.random() * (outerBound + (wave * 40) - innerBound) + innerBound) * (Math.random > 0.5 ? 1 : -1),
+            x: (r * Math.cos(angleInRadians)), 
+            y: (r * Math.sin(angleInRadians)),
         });
         await newEnemy.save();
         newEnemyIds.push(newEnemy._id);
