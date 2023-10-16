@@ -9,7 +9,7 @@ const randomWords = require("better-random-words");
 
 const innerBound = 200;
 const outerBound = 500; // TODO may increase this on higher waves ... 
-const millisecondsBetweenWaves = 800;
+const millisecondsBetweenWaves = 5000;
 // TODO speed up with each wave
 const creepSpeed = 15;  // 15;
 const updateGameInterval = 1000;

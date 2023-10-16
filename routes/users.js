@@ -8,4 +8,7 @@ router.post('/host',  users_controller.setHostPlayer);
 /* Join an existing session and set a joined player */
 router.post('/join', users_controller.setJoinedPlayer);
 
+/* Set a solo player and start a new session for them */
+router.post('/solo', users_controller.setSoloPlayer);
+
 module.exports = router;

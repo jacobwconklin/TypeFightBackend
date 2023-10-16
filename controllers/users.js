@@ -46,7 +46,7 @@ exports.setJoinedPlayer = async (req, res) => {
             res.status(400).send("Must provide alias, icon, font, join_code, and color properties to establish a Player Profile");
         }
     } catch(error) {
-        console.log("Error in selectGame in session controller", error);
+        console.log("Error in  set join player in users controller", error);
         res.status(500).send(error);
     }
 }
@@ -87,7 +87,47 @@ exports.setHostPlayer = async (req, res) => {
             res.status(400).send("Must provide alias, icon, font, join_code, and color properties to establish a Player Profile");
         }
     } catch(error) {
-        console.log("Error in selectGame in session controller", error);
+        console.log("Error in set host player in users controller", error);
+        res.status(500).send(error);
+    }
+}
+
+exports.setSoloPlayer = async (req, res) => {
+    try{
+        // make sure request has all required params
+        if (req.body.alias && req.body.icon && req.body.font && req.body.color ) {
+            // CREATES Player AND New Session AND begins session
+            // generate referral join code (un-used)
+            const join_code = referralCodeGenerator.alpha('lowercase', 8);
+            const newSession = await new Session({
+                join_code: join_code,
+                started: true
+            })
+
+            const newSavedSession = await newSession.save();
+
+            // Create new host player and save them and return the entire session object
+            const newHostPlayer = await new Player({
+                alias: req.body.alias,
+                icon: req.body.icon,
+                font: req.body.font,
+                color: req.body.color,
+                session: newSavedSession
+            })
+
+            const newSavedPlayer = await newHostPlayer.save();
+            
+            // return session and player
+            res.status(200).json({
+                session: newSavedSession,
+                player: newSavedPlayer
+            })
+
+        } else {
+            res.status(400).send("Must provide alias, icon, font, join_code, and color properties to establish a Player Profile");
+        }
+    } catch(error) {
+        console.log("Error in set solo player in users controller", error);
         res.status(500).send(error);
     }
 }
