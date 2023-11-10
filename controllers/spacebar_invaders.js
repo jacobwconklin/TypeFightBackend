@@ -6,11 +6,12 @@ const Session = require("../models/session");
 const SpacebarInvaders = require("../models/spacebar_invaders/spacebar_invaders_game");
 const Enemy = require("../models/spacebar_invaders/enemy");
 const randomWords = require("better-random-words");
+const Player = require("../models/Player");
 
 const innerBound = 200;
 const outerBound = 500; // TODO may increase this on higher waves ... 
 const millisecondsBetweenWaves = 5000;
-// TODO speed up with each wave
+// TODO speed up with each wave?
 const creepSpeed = 15;  // 15;
 const updateGameInterval = 1000;
 
@@ -222,9 +223,12 @@ exports.wipe = async(req, res) => {
 // returns array of new enemy ids based on wave provided
 const spawnEnemies = async (wave, sessionId) => {
     let newEnemyIds = [];
-    let enemyCount = (wave * 3) + 3;
-    for (let i = 0; i < enemyCount; i++) { // TODO better curve then straight linear
-        // TODO add loops for each type of enemy Like get more big words as game progresses
+    const numPlayersInSession = await Player.find({session: sessionId}).length;
+    const enemyIncreasePerWave = numPlayersInSession + 1;
+    const baseNumberOfEnemies = 3;
+    let enemyCount = (wave * enemyIncreasePerWave) + baseNumberOfEnemies;
+    for (let i = 0; i < enemyCount; i++) { 
+        // TODO better curve then straight linear
         /*
         random-words package from: https://www.npmjs.com/package/better-random-words
         */
@@ -238,16 +242,29 @@ const spawnEnemies = async (wave, sessionId) => {
         console.log("r is: ", r);
         console.log("x is: ", r * Math.cos(angleInRadians));
         console.log("y is: ", r * Math.sin(angleInRadians));
+
+        // TODO add loops for each type of enemy Like get more big words as game progresses
+        let randomWord;
+        if (i % 10 === 0) {
+            // ufo's are 10 + characters
+            randomWord = randomWords({minLength: 10});
+        } else if (i % 4 === 0) {
+            // idk maybe missiles between 6 and 9 charactesr
+            randomWord = randomWords({maxLength: 9, minLength: 6});
+        } else {
+            // asteroids are between 1 and 5 characters
+            randomWord = randomWords({maxLength: 5});
+        }
         
         const newEnemy = new Enemy({
             session: sessionId,
-            word: randomWords(), 
+            word: randomWord, 
             x: (r * Math.cos(angleInRadians)), 
             y: (r * Math.sin(angleInRadians)),
         });
         await newEnemy.save();
         newEnemyIds.push(newEnemy._id);
-        // on last loop return array ofs ids
+        // on last loop return array of ids
         if (i + 1 === enemyCount) {
             return newEnemyIds;
         }

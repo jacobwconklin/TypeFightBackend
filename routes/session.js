@@ -18,4 +18,7 @@ router.post('/leave-game', session_controller.leaveGame );
 /* Wipe the session TODO for now delete all players later them persist if they make user and pass */
 router.post('/wipe', session_controller.wipe );
 
+/* Remove one player from a given session */
+router.post('/exit', session_controller.exit);
+
 module.exports = router;

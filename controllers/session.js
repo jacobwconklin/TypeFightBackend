@@ -3,6 +3,7 @@
 const mongoose = require("mongoose");
 const Session = require("../models/session");
 const QuickKeysGame = require ("../models/quick_keys/quick_keys_game");
+const SpacebarInvadersGame = require ("../models/spacebar_invaders/spacebar_invaders_game");
 const Player = require("../models/Player");
 const result = require("../models/quick_keys/result");
 const { beginSpacebarInvaders } = require("./spacebar_invaders");
@@ -17,7 +18,6 @@ const { beginSpacebarInvaders } = require("./spacebar_invaders");
 //         console.log("Error in getAllGames", error);
 //     }
 // }
-
 
 // TO BE HIT REPEATEDLY
 // Gives all players in session and if session is started this is the MODEL for the waiting screen until host begins the game
@@ -107,6 +107,7 @@ exports.selectGame = async (req, res) => {
     }
 }
 
+// leaves the currently selected game
 exports.leaveGame = async (req, res) => {
     try{
         // make sure request has sessionId
@@ -120,7 +121,7 @@ exports.leaveGame = async (req, res) => {
             res.status(400).send("Must provide  sessionId property to leave a game");
         }
     } catch(error) {
-        console.log("Error in selectGame in session controller", error);
+        console.log("Error in leave game in session controller", error);
         res.status(500).send(error);
     }
 }
@@ -152,7 +153,37 @@ exports.wipe = async (req, res) => {
     }
 }
 
-// TODO handle one player leaving session (for now if they click TypeFight, in future if they exit websocket)
+// handle one player leaving session
+exports.exit = async (req, res) => {
+    try{
+        // make sure request has sessionId
+        if (req.body.sessionId, req.body.playerId) {
+            const currSession = await Session.findById(req.body.sessionId);
+            const playersInSession = await Player.find({ session: currSession });
+            // if the last player then wipe the session else remove only this player
+            if (playersInSession.length === 1 && playersInSession[0]._id === req.body.playerId) {
+                // wipe session
+                const playerDeleted = await Player.findByIdAndDelete(req.body.playerId);
+                const sessionDeleted = await Session.findByIdAndDelete(req.body.sessionId);
+                res.status(200).json({playerDeleted, sessionDeleted});
+                // TODO could delete all games associated with a given session here rather than complicating things by having functions
+                // for one player leaving each and every game, but on the downside one long-running session could be responsible for a lot
+                // of data objects being created. For now I will try purging all games with the given sessionId
+                await QuickKeysGame.deleteMany({ session: sessionDeleted._id });
+                await SpacebarInvadersGame.deleteMany({ session: sessionDeleted._id });
+            } else {
+                // "remove player from session" by deleting the player object from memory
+                const playerDeleted = await Player.findByIdAndDelete(req.body.playerId);
+                res.status(200).json({playerDeleted, sessionDeleted: false});
+            }
+        } else {
+            res.status(400).send("Must provide sessionId and playerId properties to exit a session");
+        }
+    } catch(error) {
+        console.log("Error in exit session", error);
+        res.status(500).send(error);
+    }
+}
 
 // get all chat messages
 

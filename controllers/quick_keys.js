@@ -46,7 +46,7 @@ exports.addPrompt = async (req, res) => {
     try {
         if (req.body.category && req.body.length && req.body.title && req.body.prompt) {
             const newPrompt = await new Prompt({
-                prompt: req.body.prompt,
+                prompt: req.body.prompt.trim(),
                 category: req.body.category,
                 length: req.body.length,
                 title: req.body.title,
