@@ -161,7 +161,6 @@ exports.updatePlayerIndex  = async (req, res) => {
             const oldResult = await Result.findOneAndUpdate({player: player}, {index: req.body.index});
             // may be more meaningful to return whole game but if status endpoint does that I don't need to make this
             // endpoint any slower.
-            // returning oldResult will just show the old value so TODO determine if better to show new value or nothing or something else
             res.status(200).json(oldResult);
         } else {
             res.status(400).send("Must provide playerId and index properties to update player index");
@@ -188,8 +187,6 @@ exports.updatePlayerTime = async(req, res) => {
         res.status(500).send(error);
     }
 }
-
-// TODO game exited -> handle new game, with new prompt, same prompt, or destroy game (if back to game select).
 
 exports.wipe = async(req, res) => {
     try {

@@ -5,7 +5,6 @@ const mongoose = require("mongoose");
 const Session = require("../models/session");
 const SpacebarInvaders = require("../models/spacebar_invaders/spacebar_invaders_game");
 const Enemy = require("../models/spacebar_invaders/enemy");
-const randomWords = require("better-random-words");
 const Player = require("../models/Player");
 
 const innerBound = 200;
@@ -177,17 +176,9 @@ exports.destroy = async(req, res) => {
                 // just destroy enemy
                 // delete and remove from curr game's array
                 const eliminatedEnemy = await Enemy.findOneAndDelete({word: req.body.word});
-                // Found that comparing two new Object('id') doesn't give equality unless using .equals() !!
-                // console.log("Eliminated the enemy: ", eliminatedEnemy); 
-                // console.log("New enemy array is: ", currGame.enemies.filter(enemy => {
-                //     console.log("Enemy is: ", enemy);
-                //     console.log("Eleminated enemy id is: ", eliminatedEnemy._id);
-                //     console.log("Equality check is: ", enemy !== eliminatedEnemy._id);
-                //     console.log("String Equality check is: ", String(enemy) !== String(eliminatedEnemy._id));
-                //     return String(enemy) !== String(eliminatedEnemy._id);
-                // }));
+                // Found that comparing two new Object('id') doesn't give equality unless using .equals() 
                 currGame.enemies = currGame.enemies.filter(enemy => enemy !== null && !enemy.equals(eliminatedEnemy._id));
-                const savedGame = await currGame.save();
+                await currGame.save();
             }
             res.status(200).json({message: "Enemy Destroyed"});
         } else {
@@ -223,37 +214,30 @@ exports.wipe = async(req, res) => {
 // returns array of new enemy ids based on wave provided
 const spawnEnemies = async (wave, sessionId) => {
     let newEnemyIds = [];
-    const numPlayersInSession = await Player.find({session: sessionId}).length;
-    const enemyIncreasePerWave = numPlayersInSession + 1;
+    const playersInSession = await Player.find({session: sessionId});
+    const enemyIncreasePerWave = playersInSession.length + 1;
     const baseNumberOfEnemies = 3;
     let enemyCount = (wave * enemyIncreasePerWave) + baseNumberOfEnemies;
     for (let i = 0; i < enemyCount; i++) { 
-        // TODO better curve then straight linear
-        /*
-        random-words package from: https://www.npmjs.com/package/better-random-words
-        */
+        // TODO potentially change to curve rather than straight linear increase in enemies
         // x = r × cos( θ )
         // y = r × sin( θ )
         // generate random angle and r in range of inner and outer bounds for polar coordinates
         // then convert them to cartesian
         // TODO tweak change on larger waves
-        const r = ( (Math.random() * (outerBound + (wave * 40) - innerBound)) + innerBound);
+        const r = ( (Math.random() * (outerBound + (wave * 50) - innerBound)) + innerBound);
         const angleInRadians = (Math.random() * 2 * Math.PI );
-        console.log("r is: ", r);
-        console.log("x is: ", r * Math.cos(angleInRadians));
-        console.log("y is: ", r * Math.sin(angleInRadians));
-
-        // TODO add loops for each type of enemy Like get more big words as game progresses
-        let randomWord;
-        if (i % 10 === 0) {
+        const { generate } = await import("random-words");
+        // loops for each type of enemy Like get more big words as game progresses
+        if ((i + 1) % 10 === 0) {
             // ufo's are 10 + characters
-            randomWord = randomWords({minLength: 10});
-        } else if (i % 4 === 0) {
+            randomWord = generate({minLength: 10});
+        } else if ((i + 1) % 4 === 0) {
             // idk maybe missiles between 6 and 9 charactesr
-            randomWord = randomWords({maxLength: 9, minLength: 6});
+            randomWord = generate({maxLength: 9, minLength: 6});
         } else {
             // asteroids are between 1 and 5 characters
-            randomWord = randomWords({maxLength: 5});
+            randomWord = generate({maxLength: 5});
         }
         
         const newEnemy = new Enemy({
@@ -262,7 +246,7 @@ const spawnEnemies = async (wave, sessionId) => {
             x: (r * Math.cos(angleInRadians)), 
             y: (r * Math.sin(angleInRadians)),
         });
-        await newEnemy.save();
+        const savedEnemy = await newEnemy.save();
         newEnemyIds.push(newEnemy._id);
         // on last loop return array of ids
         if (i + 1 === enemyCount) {
