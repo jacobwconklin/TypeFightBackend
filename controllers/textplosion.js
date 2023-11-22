@@ -52,20 +52,22 @@ exports.beginTextplosion = async (sessionId) => {
     try {
         if (sessionId) {
             // get # of players and create array of ids of TextplosionPlayer objects for new game object
-            const currSession = Session.findById(sessionId);
-            const playersInSession = Player.find({ session: currSession });
+            const currSession = await Session.findById(sessionId);
+            const playersInSession = await Player.find({ session: currSession });
             const playersInGame = [];
-            await Promise.all(playersInSession.forEach( (player, index) => {
-                    playersInGame.push( new TextplosionPlayer({
-                        playerId: player,
-                        blownUp: false,
-                        position: index,
-                        alias: player.alias,
-                        font: player.font,
-                        color: player.color
-                    }));
-                }
-            ))
+            await Promise.all(playersInSession.map( async (player, index) => {
+                // create and save new TextplosionPlayer object to add into the array
+                const newTextplosionPlayer = new TextplosionPlayer({
+                    playerId: player,
+                    blownUp: false,
+                    position: index,
+                    alias: player.alias,
+                    font: player.font,
+                    color: player.color
+                });
+                const savedTextplosionPlayer = await newTextplosionPlayer.save();
+                playersInGame.push(savedTextplosionPlayer._id);
+            }))
 
             const newGame = await new TextplosionGame({
                 session: sessionId,
@@ -77,17 +79,6 @@ exports.beginTextplosion = async (sessionId) => {
                 playersInGame
             })
             const savedNewGame = await newGame.save();
-            const gameInterval = setInterval(updateGame, updateGameInterval, savedNewGame._id, sessionId); // TODO tweak interval
-            // save interval so it can be cleared later (can be accessed the same way) i.e.: sessionToIntervalMap["" + game._id]
-            sessionToIntervalMap["" + savedNewGame._id] = gameInterval;
-            // give a few seconds before first round of enemies
-            setTimeout(async () => {
-                const game = await SpacebarInvaders.findById(savedNewGame._id);
-                const spawnedEnemies = await spawnEnemies(0, sessionId);
-                game.enemies = spawnedEnemies;
-                const savedGame = await game.save();
-            }, 3000);
-            
             return savedNewGame;
         } else {
             console.log("Must provide sessionId to begin Spacebar Invaders");
@@ -118,7 +109,7 @@ exports.pump = async (req, res) => {
                 // Player gets wrecked find whoever is up front and set their blownUp status to true
                 // then reset all other player positions so that a new player is at index 0
                 let playersInGame = [];
-                await Promise.all(textplosionGame.playersInGame.forEach( async (playerId) => {
+                await Promise.all(textplosionGame.playersInGame.map( async (playerId) => {
                     const playerInGame = await TextplosionPlayer.findById(playerId);
                     if (!playerInGame.blownUp) {
                         // IF they are in the hot seat BLOW THEM UP here
@@ -132,11 +123,15 @@ exports.pump = async (req, res) => {
                     }
                 }));
 
-                // now cycle through players not blown up
-                await Promise.all(playersInGame.sort( (a, b) => a.position < b.position ).forEach( async (player, index) => {
-                    player.position = index;
-                    await player.save();
-                }));
+                // now cycle through players not blown up (Throws error if game is only played by one person, need to)
+                // make sure game can't be selected by one player or add in a bot if it is, but for now will wrap in an if
+                // to prevent errors
+                if (playersInGame.length > 0) {
+                    await Promise.all(playersInGame.sort( (a, b) => a.position - b.position ).map( async (player, index) => {
+                        player.position = index;
+                        await player.save();
+                    }));
+                }
             }
             // otherwise go on business as usual
             res.status(200).send("word pumped");
@@ -162,7 +157,7 @@ exports.escape = async (req, res) => {
             // get all players in game and count number not blown up
             let countNotBlownUp = 0;
             let playersInGame = [];
-            await Promise.all(textplosionGame.playersInGame.forEach( async (playerId) => {
+            await Promise.all(textplosionGame.playersInGame.map( async (playerId) => {
                 const playerInGame = await TextplosionPlayer.findById(playerId);
                 if (!playerInGame.blownUp) {
                     // if not blown up increment count and add them to the array
@@ -172,12 +167,14 @@ exports.escape = async (req, res) => {
             }));
             // now cycle through players not blown up, I think this is solid logic but may need to log through it to 
             // ensure a player gets the all important 0 position to get on the hot seat. 
-            await Promise.all(playersInGame.sort( (a, b) => a.position < b.position ).forEach( async (player, index) => {
+            let currSetPosition = 0;
+            await Promise.all(playersInGame.sort( (a, b) => a.position - b.position ).map( async (player) => {
                 if (player.position === 0) {
-                    player.position = countNotBlownUp;
+                    player.position = countNotBlownUp - 1;
                     await player.save();
                 } else {
-                    player.position = index - 1;
+                    player.position = currSetPosition;
+                    currSetPosition += 1;
                     await player.save();
                 }
             }));
@@ -200,5 +197,7 @@ const getCharsToPop = (sessionId) => {
     // 100% matters. I also think these should be larger numbers in general but want to keep it smaller to test 
     // at first
     const charsToPop = (20 + (playersInSession.length * ((~~(Math.random() * 20)) + 20)));
-    return charsToPop;
+    // return charsToPop;
+    // TODO temporary easy number
+    return 20;
 }

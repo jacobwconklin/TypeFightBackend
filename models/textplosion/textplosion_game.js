@@ -3,7 +3,7 @@ const Session = require("../session");
 const TextplosionPlayer = require("./textplosion_player");
 const Schema = mongoose.Schema;
 
-const SpacebarInvadersGameSchema = new Schema({
+const TextplosionGameSchema = new Schema({
     // the session it belongs to so that player http requests are easily applied to the right game
     session: { type: mongoose.ObjectId, ref: Session },
     // need to set random number for balloon top at
@@ -17,4 +17,4 @@ const SpacebarInvadersGameSchema = new Schema({
   });
   
   // Export model
-  module.exports = mongoose.model("SpacebarInvadersGame", SpacebarInvadersGameSchema);
+  module.exports = mongoose.model("TextplosionGame", TextplosionGameSchema);

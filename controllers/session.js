@@ -7,6 +7,7 @@ const SpacebarInvadersGame = require ("../models/spacebar_invaders/spacebar_inva
 const Player = require("../models/Player");
 const result = require("../models/quick_keys/result");
 const { beginSpacebarInvaders } = require("./spacebar_invaders");
+const { beginTextplosion } = require("./textplosion");
 
 // Temporarily let front-end hard code in all games, if this were a public website would want the games names and images 
 // stored and retrieved through the server to dynamically add and remove games
@@ -92,7 +93,7 @@ exports.selectGame = async (req, res) => {
             } 
             else if (req.body.selected_game === "Textplosion") {
                 // call game spawner in textplosion controller
-                savedNewGame = await beginTexplosion(req.body.sessionId);
+                savedNewGame = await beginTextplosion(req.body.sessionId);
             }
             else { 
                 // Invalid name for selected_game
