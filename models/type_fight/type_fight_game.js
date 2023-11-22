@@ -10,3 +10,7 @@
 // left side of the screen with the player), placing enemies on the right of the screen lined up with little health bars. 
 // players will need to click or type something to select the enemy to target (maybe an array of enemy icons) and then type in
 // either fast attack, heavy attack, or status effect to hurt the enemy. 
+
+
+// I now think my old idea of type fight may become another game, but I would rather the name typefight go to a 2d turn-based
+// game I have been thinking of that is similar to shovel knight. 

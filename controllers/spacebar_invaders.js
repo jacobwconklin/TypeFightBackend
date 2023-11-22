@@ -31,6 +31,7 @@ const updateGame = async (spacebarInvadersId, sessionId) => {
                     // move enemy towards 0-0 TODO change speed of movement based on word length maybe? 
                     const enemyObject = await Enemy.findById(enemyId);
                     const creepSpeedPlusWaveFactor = game.wave > 5 ? creepSpeed + 5 + Math.floor(game.wave / 2) : creepSpeed + game.wave;
+                    // TODO fix enemies getting really close but not modulating around earth so not counting as collisions
                     if (enemyObject.x > 8) {
                         enemyObject.x = enemyObject.x - creepSpeedPlusWaveFactor;
                     } else if (enemyObject.x < -8) {
@@ -43,7 +44,7 @@ const updateGame = async (spacebarInvadersId, sessionId) => {
                     }
                     // check for earth collision
                     // TODO measurement may vary based on image
-                    if ( enemyObject.x < 10 && enemyObject.x > -10 && enemyObject.y < 10 && enemyObject.y > -10  ) {
+                    if ( enemyObject.x < 16 && enemyObject.x > -16 && enemyObject.y < 16 && enemyObject.y > -16  ) {
                         // destroy enemy and damage earth
                         game.health -= 1;
                         game.enemies = game.enemies.filter(enemy => !enemy.equals(enemyId));

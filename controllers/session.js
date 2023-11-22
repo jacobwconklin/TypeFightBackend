@@ -90,6 +90,10 @@ exports.selectGame = async (req, res) => {
                 // interval, probably cleaner than how quick keys is started above ^
                 savedNewGame = await beginSpacebarInvaders(req.body.sessionId);
             } 
+            else if (req.body.selected_game === "Textplosion") {
+                // call game spawner in textplosion controller
+                savedNewGame = await beginTexplosion(req.body.sessionId);
+            }
             else { 
                 // Invalid name for selected_game
                 res.status(400).send("INVALID name for selected_game: ", req.body.selected_game);
