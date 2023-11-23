@@ -62,6 +62,7 @@ exports.beginTextplosion = async (sessionId) => {
                     blownUp: false,
                     position: index,
                     alias: player.alias,
+                    icon: player.icon,
                     font: player.font,
                     color: player.color
                 });
