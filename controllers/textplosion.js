@@ -69,13 +69,14 @@ exports.beginTextplosion = async (sessionId) => {
                 const savedTextplosionPlayer = await newTextplosionPlayer.save();
                 playersInGame.push(savedTextplosionPlayer._id);
             }))
+            const charsToPop = await getCharsToPop(sessionId);
 
             const newGame = await new TextplosionGame({
                 session: sessionId,
                 // TODO can update this to be more random? but I don't think players will actually know so I doubt it 
                 // 100% matters. I also think these should be larger numbers in general but want to keep it smaller to test 
                 // at first
-                charsToPop: getCharsToPop(sessionId),
+                charsToPop,
                 charsTyped: 0,
                 playersInGame
             })
@@ -190,15 +191,44 @@ exports.escape = async (req, res) => {
     }
 }
 
+// wipe a game (if players all leave or choose to play a new game)
+// will remove memory from Mongo DB
+exports.wipe = async(req, res) => {
+    console.log("we wiping");
+    try{
+        if (req.body.sessionId) {
+            const currSession = await Session.findById(req.body.sessionId);
+            const textplosionGame = await TextplosionGame.findOne({ session: currSession });
+            console.log("we wiping 2");
+
+            // delete players first because deleting TextplosionGame would handle this
+            let numPlayersDeleted = 0;
+            await Promise.all(textplosionGame.playersInGame.map( async (playerId) => {
+                await TextplosionPlayer.findByIdAndDelete(playerId);
+                numPlayersDeleted++;
+            }))
+            // delete textplosion game object
+            const textplosionGameDeleted = await TextplosionGame.findOneAndDelete({session: currSession});
+            console.log("we wiping 3");
+            res.status(200).json({numberOfTextplosionPlayersDeleted: numPlayersDeleted, textplosionGameDeleted });
+        } else {
+            res.status(400).send("Must provide sessionId property to wipe a Quick Keys game");
+        }
+    } catch (error) {
+        console.log("Error in textplosion wipe", error);
+        res.status(500).send(error);
+    }
+}
+
 // private function to decide the number of chars needed to pop
-const getCharsToPop = (sessionId) => {
-    const currSession = Session.findById(sessionId);
-    const playersInSession = Player.find({ session: currSession });
+const getCharsToPop = async (sessionId) => {
+    const currSession = await Session.findById(sessionId);
+    const playersInSession = await Player.find({ session: currSession });
     // TODO can update this to be more random? but I don't think players will actually know so I doubt it 
     // 100% matters. I also think these should be larger numbers in general but want to keep it smaller to test 
     // at first
-    const charsToPop = (20 + (playersInSession.length * ((~~(Math.random() * 20)) + 20)));
+    const charsToPop = (200 + (playersInSession.length * 300));
     // return charsToPop;
     // TODO temporary easy number
-    return 20;
+    return 100;
 }

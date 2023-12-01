@@ -13,4 +13,7 @@ router.post('/pump', textplosion_controller.pump);
 /* allows player on the hot-seat to "escape" when they complete their challenge */
 router.post('/escape', textplosion_controller.escape);
 
+/* allows wiping a textplosion game deleting all associated memory */
+router.post('/wipe', textplosion_controller.wipe);
+
 module.exports = router;
