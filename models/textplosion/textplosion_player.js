@@ -25,7 +25,6 @@ const TextplosionPlayerSchema = new Schema({
         'Nova Square',
         'Reggae One',
         'Roboto',
-        'Roboto Serif Variable',
         'Times New Roman',
         'Tomorrow'
     ]},

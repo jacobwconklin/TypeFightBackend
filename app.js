@@ -16,6 +16,7 @@ var quickKeysRouter = require('./routes/quick_keys');
 var spacebarInvadersRouter = require('./routes/spacebar_invaders');
 var textRouter = require('./routes/text');
 var textplosionRouter = require('./routes/textplosion');
+var typeFlightRouter = require('./routes/type_flight');
 
 app.use(cors())
 app.use(express.json());
@@ -53,6 +54,7 @@ app.use('/users', usersRouter);
 app.use('/session', sessionRouter)
 app.use('/quick-keys', quickKeysRouter);
 app.use('/spacebar-invaders', spacebarInvadersRouter);
+app.use('/typeflight', typeFlightRouter)
 app.use('/textplosion', textplosionRouter);
 app.use('/text', textRouter);
 

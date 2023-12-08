@@ -8,6 +8,7 @@ const Player = require("../models/Player");
 const result = require("../models/quick_keys/result");
 const { beginSpacebarInvaders } = require("./spacebar_invaders");
 const { beginTextplosion } = require("./textplosion");
+const { beginTypeFlight } = require("./type_flight");
 
 // Temporarily let front-end hard code in all games, if this were a public website would want the games names and images 
 // stored and retrieved through the server to dynamically add and remove games
@@ -54,6 +55,7 @@ exports.begin = async (req, res) => {
     }
 }
 
+// Make sure game names match the routes for those games.
 exports.selectGame = async (req, res) => {
     try{
         // make sure request has selected_game
@@ -61,7 +63,7 @@ exports.selectGame = async (req, res) => {
     
             // determine game type TODO could be moved to a map or it's own function to spawn games
             let savedNewGame;
-            if (req.body.selected_game === "Quick Keys") {
+            if (req.body.selected_game === "quick-keys") {
                 // TODO determine if I should make all results here or make them with first request from each player?
                 // Will try setting results with initial values here
                 const currSession = await Session.findById(req.body.sessionId);
@@ -86,14 +88,17 @@ exports.selectGame = async (req, res) => {
                 // });
                 savedNewGame = await newQuickKeys.save();
             } 
-            else if (req.body.selected_game === "Spacebar Invaders") {
+            else if (req.body.selected_game === "spacebar-invaders") {
                 // HERE begin function was moved to spacebar_invaders controller to monitor
                 // interval, probably cleaner than how quick keys is started above ^
                 savedNewGame = await beginSpacebarInvaders(req.body.sessionId);
             } 
-            else if (req.body.selected_game === "Textplosion") {
+            else if (req.body.selected_game === "textplosion") {
                 // call game spawner in textplosion controller
                 savedNewGame = await beginTextplosion(req.body.sessionId);
+            } 
+            else if (req.body.selected_game === "typeflight") {
+                savedNewGame = await beginTypeFlight(req.body.sessionId);
             }
             else { 
                 // Invalid name for selected_game
