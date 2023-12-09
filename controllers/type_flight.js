@@ -87,14 +87,23 @@ const createRandomEvent = async (typeFlightId) => {
             // activate bomb then check for any living players that are hit
             await TypeFlightEvent.findByIdAndUpdate(savedNewEvent._id, {activated: true});
             const game = await TypeFlightGame.findById(typeFlightId);
+            let numberOfDeadPlayers = 0;
             await Promise.all(game.playersInGame.map(async (playerId) => {
                 const playerObject = await TypeFlightPlayer.findById(playerId);
-                if (checkEventHitsPlayer(savedNewEvent.position, playerObject.position, "bomb")) {
+                if (playerObject.isAlive && checkEventHitsPlayer(savedNewEvent.position, playerObject.position, "bomb")) {
                     // player is killed
                     playerObject.isAlive = false;
                     await playerObject.save();
+                    numberOfDeadPlayers++;
+                } else if (!playerObject.isAlive) {
+                    numberOfDeadPlayers++;
                 }
             }));
+            // All players dead set endTimeAbsolute to effectively end the game (even if someone was revived mid-loop)
+            if (numberOfDeadPlayers === game.playersInGame.length) {
+                game.endTimeAbsolute = Date.now();
+                await game.save();
+            }
             // console.log("Activated bomb: ", savedNewEvent._id);
             setTimeout(async () => {
                 await TypeFlightEvent.findByIdAndDelete(savedNewEvent._id);
@@ -151,8 +160,14 @@ exports.typeFlightStatus = async (req, res) => {
             const game = await TypeFlightGame.findOne({ session: currSession });
             const events = await TypeFlightEvent.find({typeFlightGame: game._id});
             const players = await Promise.all(game.playersInGame.map( async (playerId) => {
-                const playerObject = await TypeFlightPlayer.findById(playerId);
-                return playerObject;
+                const typeFlightPlayerObject = await TypeFlightPlayer.findById(playerId);
+                const standardPlayerObject = await Player.findById(typeFlightPlayerObject.playerId);
+                console.log("combined player is", {position: typeFlightPlayerObject.position, playerId: typeFlightPlayerObject.playerId, alias: standardPlayerObject.alias, icon: standardPlayerObject.icon, 
+                    font: standardPlayerObject.font, color: standardPlayerObject.color, isAlive: typeFlightPlayerObject.isAlive
+                });
+                return {position: typeFlightPlayerObject.position, playerId: typeFlightPlayerObject.playerId, alias: standardPlayerObject.alias, icon: standardPlayerObject.icon, 
+                    font: standardPlayerObject.font, color: standardPlayerObject.color, isAlive: typeFlightPlayerObject.isAlive
+                };
             }));
             // need game for start time and end time
             res.status(200).json({game, events, players});
@@ -220,6 +235,18 @@ exports.updatePlayerPosition  = async (req, res) => {
                 if (checkEventHitsPlayer(event.position, req.body.playerId, event.type)) {
                     // kill player 
                     await TypeFlightPlayer.findOneAndUpdate({playerId: req.body.playerId}, {isAlive: false});
+                    // now check if all players are dead and if so set endTimeAbsolute to end game
+                    let numberOfDeadPlayers = 0;
+                    await Promise.all(typeFlightGame.playersInGame.map(async (playerId) => {
+                        const playerObject = await TypeFlightPlayer.findById(playerId);
+                        if (!playerObject.isAlive) {
+                            numberOfDeadPlayers++;
+                        }
+                    }));
+                    if (numberOfDeadPlayers === typeFlightGame.playersInGame.length) {
+                        typeFlightGame.endTimeAbsolute = Date.now();
+                        await typeFlightGame.save();
+                    }
                 }
             }));
             res.status(200).json(updatedPlayer);
