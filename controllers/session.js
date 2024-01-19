@@ -152,6 +152,8 @@ exports.wipe = async (req, res) => {
                 await Player.findByIdAndDelete(player._id);
                 numPlayersDeleted++;
             }))
+            // delete messages from session
+            await Message.deleteMany({ session: currSession });
             // delete session
             const sessionDeleted = await Session.findByIdAndDelete(req.body.sessionId);
             res.status(200).json({playersDeleted: numPlayersDeleted, sessionDeleted: sessionDeleted});
