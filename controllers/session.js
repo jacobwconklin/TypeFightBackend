@@ -2,6 +2,7 @@
 // Getting chat messages and displaying chat messages, etc. Get all players associated with a session
 const mongoose = require("mongoose");
 const Session = require("../models/session");
+const Message = require("../models/message");
 const QuickKeysGame = require ("../models/quick_keys/quick_keys_game");
 const SpacebarInvadersGame = require ("../models/spacebar_invaders/spacebar_invaders_game");
 const Player = require("../models/Player");
@@ -196,7 +197,42 @@ exports.exit = async (req, res) => {
 }
 
 // get all chat messages
+exports.getAllChatMessages = async (req, res) => {
+    try{
+        // make sure request has sessionId
+        if (req.body.sessionId) {
+            const currSession = await Session.findById(req.body.sessionId);
+            const allMessages = await Message.find({ session: currSession });
+            res.status(200).json(allMessages);
+        } else {
+            res.status(400).send("Must provide sessionId property to get all chat messages");
+        }
+    } catch(error) {
+        console.log("Error in get all chat messages", error);
+        res.status(500).send(error);
+    }
+}
 
 // get last 10 chat messages
 
 // new chat message
+exports.addChatMessage = async (req, res) => {
+    try{
+        // make sure request has sessionId
+        if (req.body.sessionId && req.body.message && req.body.playerId) {
+            const currSession = await Session.findById(req.body.sessionId);
+            const player = await Player.findById(req.body.playerId);
+            const newMessage = await new Message({
+                session: currSession._id,
+                message: req.body.message,
+                playerAlias: player.alias
+            }).save();
+            res.status(200).json(newMessage);
+        } else {
+            res.status(400).send("Must provide sessionId, playerId, and message properties to add a chat message");
+        }
+    } catch(error) {
+        console.log("Error in add chat message", error);
+        res.status(500).send(error);
+    }
+}
