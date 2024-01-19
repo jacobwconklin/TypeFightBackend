@@ -7,12 +7,12 @@ const Player = require("../models/Player");
 
 
 // A slower interval as it only handles creating events
-const updateGameInterval = 10000;
+const updateGameInterval = 1000;
 // will effectively store the "intervals" here on the server in a map, so that they can be destroyed when players finish the game
 // connect each interval to their session by session id
 const sessionToIntervalMap = {}
 
-const bombDelay = 3000;
+const bombDelay = 5000;
 const bombDuration = 2000;
 
 // given an event position, player position, and event type, check if the event does
@@ -131,20 +131,34 @@ const updateGame = async (typeFlightId) => {
             // simply spawn more events, activate them after a waiting period, and then destroy them
             // spawn them at a rate based on the current time
             const currTime = new Date();
-            const secondsElapsed = ~~((Date.now() - game.startTimeAbsolute) / 1000);
+            const secondsElapsed = ((Date.now() - game.startTimeAbsolute) / 1000);
             const increaseEventsSpawnedAfterThisManySeconds = 20; // TODO tweak here,
+            const defaultMaxEvents = 3;
 
-            // One idea I have but I'm not married to it, for every 'x' number of seconds passed plus a default
-            // amount try to generate a random number and decide if an event is spawned, this way it is still random
-            // but overall increasing as time passes, but don't want the numbers to shoot up so players are able to last for a few 
-            // minutes.
-            for (let i = 0; i < (3 + ~~(secondsElapsed / increaseEventsSpawnedAfterThisManySeconds)); i++) {  
-                // randomly decide for each possible event if one will be created
-                // TODO for now a 50 / 50 chance, may want to adjust this over time or just change it
-                if (Math.random() > 0.5) {
-                    createRandomEvent(typeFlightId);
-                }
+            // // One idea I have but I'm not married to it, for every 'x' number of seconds passed plus a default
+            // // amount try to generate a random number and decide if an event is spawned, this way it is still random
+            // // but overall increasing as time passes, but don't want the numbers to shoot up so players are able to last for a few 
+            // // minutes.
+            // for (let i = 0; i < (3 + ~~(secondsElapsed / increaseEventsSpawnedAfterThisManySeconds)); i++) {  
+            //     // randomly decide for each possible event if one will be created
+            //     // TODO for now a 50 / 50 chance, may want to adjust this over time or just change it
+            //     if (Math.random() > 0.5) {
+            //         createRandomEvent(typeFlightId);
+            //     }
+            // }
+
+            // scratch that idea, instead just have a "max" number of events that slowly increases based on a default + time elapsed
+            // and if less than that max number currently exist go ahead and spawn one more (so only 1 spawns per iteration (second))
+            // with this formula the maximum amount of events will basically always be present, so the delay between events appearing and
+            // activating should be ramped up
+            const maxEvents = (defaultMaxEvents + ~~(secondsElapsed / increaseEventsSpawnedAfterThisManySeconds));
+            // Find the current number of events and check if max is reached
+            const allEventsForGame = await TypeFlightEvent.find({ typeFlightGame: typeFlightId });
+            if (allEventsForGame.length < maxEvents) {
+                // spawn 1 more event
+                createRandomEvent(typeFlightId);
             }
+
         }
     } catch (error) {
         console.log("Error in update game: ", error);
@@ -162,9 +176,6 @@ exports.typeFlightStatus = async (req, res) => {
             const players = await Promise.all(game.playersInGame.map( async (playerId) => {
                 const typeFlightPlayerObject = await TypeFlightPlayer.findById(playerId);
                 const standardPlayerObject = await Player.findById(typeFlightPlayerObject.playerId);
-                console.log("combined player is", {position: typeFlightPlayerObject.position, playerId: typeFlightPlayerObject.playerId, alias: standardPlayerObject.alias, icon: standardPlayerObject.icon, 
-                    font: standardPlayerObject.font, color: standardPlayerObject.color, isAlive: typeFlightPlayerObject.isAlive
-                });
                 return {position: typeFlightPlayerObject.position, playerId: typeFlightPlayerObject.playerId, alias: standardPlayerObject.alias, icon: standardPlayerObject.icon, 
                     font: standardPlayerObject.font, color: standardPlayerObject.color, isAlive: typeFlightPlayerObject.isAlive
                 };
@@ -221,34 +232,43 @@ exports.beginTypeFlight = async (sessionId) => {
 // TODO Handle checking if the player moved into the blast area of an event that is active and kill the player
 exports.updatePlayerPosition  = async (req, res) => {
     try {
+        console.log("here?? Really?", req.body);
         if (req.body.playerId && req.body.sessionId && req.body.position ) {
 
+            console.log("1");
             // update player to be at new position
             const updatedPlayer = await TypeFlightPlayer.findOneAndUpdate({ playerId: req.body.playerId}, {position: req.body.position});
             
+            console.log("2");
             // check if new position is inside of an active event
             const typeFlightGame = await TypeFlightGame.findOne({session: req.body.sessionId});
             const allEvents = await TypeFlightEvent.find({typeFlightGame: typeFlightGame});
+            console.log("3");
             // look through all of the events
             await Promise.all(allEvents.filter(event => event.activated).map( async (event) => {
                 // check each active event
+            console.log("4");
                 if (checkEventHitsPlayer(event.position, req.body.playerId, event.type)) {
                     // kill player 
                     await TypeFlightPlayer.findOneAndUpdate({playerId: req.body.playerId}, {isAlive: false});
+                    console.log("5");
                     // now check if all players are dead and if so set endTimeAbsolute to end game
                     let numberOfDeadPlayers = 0;
                     await Promise.all(typeFlightGame.playersInGame.map(async (playerId) => {
+                        console.log("6");
                         const playerObject = await TypeFlightPlayer.findById(playerId);
                         if (!playerObject.isAlive) {
                             numberOfDeadPlayers++;
                         }
                     }));
+                    console.log("7");
                     if (numberOfDeadPlayers === typeFlightGame.playersInGame.length) {
                         typeFlightGame.endTimeAbsolute = Date.now();
                         await typeFlightGame.save();
                     }
                 }
             }));
+            console.log("8");
             res.status(200).json(updatedPlayer);
         } else {
             res.status(400).send("Must provide playerId, sessionId, and position (Int) properties to update player position");
@@ -279,22 +299,30 @@ exports.revive = async (req, res) => {
 // wipe a game (if players all leave or choose to play a new game)
 // will cancel running interval as well as remove memory from Mongo DB
 exports.wipe = async(req, res) => {
+    try{
+        if (req.body.sessionId) {
+            const currSession = await Session.findById(req.body.sessionId);
+            // shut down interval first
+            clearInterval(sessionToIntervalMap["" + req.body.sessionId]);
+            delete sessionToIntervalMap["" + req.body.sessionId];
+            const game = await TypeFlightGame.findOne({ session: currSession });
 
-    // TODO
+            // delete all associated TypeFlightPlayers
+            await Promise.all(game.playersInGame.map( async(playerId) => {
+                await TypeFlightPlayer.findByIdAndDelete(playerId);
+            }))
 
-    // try{
-    //     if (req.body.sessionId) {
-    //         const currSession = await Session.findById(req.body.sessionId);
-    //         // shut down interval first
-    //         clearInterval(sessionToIntervalMap["" + req.body.sessionId]);
-    //         delete sessionToIntervalMap["" + req.body.sessionId];
-    //         const deletedGame = await SpacebarInvaders.findOneAndDelete({ session: currSession });
-    //         res.status(200).json(deletedGame);
-    //     } else {
-    //         res.status(400).send("Must provide sessionId to wipe a spacebar invaders game");
-    //     }
-    // } catch(error) {
-    //     console.log("Error in spacebar invaders wipe", error);
-    //     res.status(500).send(error);
-    // }
+            // delete the game itself
+            const deletedGame = await TypeFlightGame.findOneAndDelete({ session: currSession });
+
+            // delete all associated events (if any)
+            const deletedEvents = await TypeFlightEvent.deleteMany({typeFlightGame: game._id});
+            res.status(200).json(deletedGame);
+        } else {
+            res.status(400).send("Must provide sessionId to wipe a typeflight game");
+        }
+    } catch(error) {
+        console.log("Error in typeflight wipe", error);
+        res.status(500).send(error);
+    }
 }

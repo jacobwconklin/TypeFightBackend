@@ -23,6 +23,8 @@ const updateGame = async (spacebarInvadersId, sessionId) => {
     try {
         const game = await SpacebarInvaders.findById(spacebarInvadersId);
         
+        // TODO sometimes new waves aren't getting started may need something like this filter(enemy => enemy !== null).
+        // if enemies are becoming null... 
         if (game && game.enemies && game.enemies.length > 0) {
             // try grabbing each enemy, if they happened to be deleted but still in the list for a split second
             // do nothing
